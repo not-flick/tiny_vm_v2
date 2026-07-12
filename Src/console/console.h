@@ -2,6 +2,7 @@
 
 #include <string>
 #include <string_view>
+#include <filesystem>
 
 #include <SDL3/SDL.h>
 #include <SDL3_ttf/SDL_ttf.h>
@@ -62,6 +63,20 @@ public:
 
     void present();
 
+    // =============================
+    // Fonts
+    // =============================
+
+    bool loadFont(const std::filesystem::path& path, float size);
+
+    bool loadDefaultFont(float size = 18.0f);
+
+    void unloadFont();
+
+    bool hasFont() const;
+
+    float fontSize() const;
+
 
 private:
 
@@ -76,4 +91,7 @@ private:
     // Window size
     int windowWidth = 0;
     int windowHeight = 0;
+
+    std::filesystem::path currentFont;
+    float currentFontSize = 18.0f;
 };
