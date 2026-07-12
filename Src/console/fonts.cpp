@@ -1,5 +1,6 @@
 #include "console.h"
-#include "platform.h"
+
+#include "../Platform/platform.h"
 
 #include <filesystem>
 
@@ -9,8 +10,11 @@ bool Console::loadFont(const std::filesystem::path& path, float size)
 
     font = TTF_OpenFont(path.string().c_str(), size);
 
-    if (!font)
+    if (font == nullptr)
+    {
+        SDL_Log("Failed to load font: %s", path.string().c_str());
         return false;
+    }
 
     currentFont = path;
     currentFontSize = size;
@@ -20,16 +24,9 @@ bool Console::loadFont(const std::filesystem::path& path, float size)
 
 bool Console::loadDefaultFont(float size)
 {
-    // Try the bundled JetBrains Nerd Font.
-    if (loadFont(
-        Platform::fontsDirectory() /
-        "JetBrainsMonoNerdFontPropo-Regular.ttf",
-        size))
-    {
-        return true;
-    }
+    currentFontSize = size;
 
-    // Try every system font.
+    // Try every system font first.
     for (const auto& directory : Platform::systemFontDirectories())
     {
         if (!std::filesystem::exists(directory))
@@ -55,7 +52,12 @@ bool Console::loadDefaultFont(float size)
         }
     }
 
-    return false;
+    // Fall back to the bundled Nerd Font.
+    return loadFont(
+        Platform::fontsDirectory() /
+        "JetBrainsMonoNerdFontPropo-Regular.ttf",
+        size
+    );
 }
 
 void Console::unloadFont()

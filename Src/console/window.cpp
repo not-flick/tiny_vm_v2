@@ -5,19 +5,19 @@
 
 Console::Console(int width, int height, std::string_view title)
 {
-    windowWidth = width;
+    windowWidth  = width;
     windowHeight = height;
 
     if (!SDL_Init(SDL_INIT_VIDEO))
     {
-        SDL_Log("SDL Init Failed: %s", SDL_GetError());
+        SDL_Log("SDL_Init failed: %s", SDL_GetError());
         running = false;
         return;
     }
 
     if (!TTF_Init())
     {
-        SDL_Log("TTF Init Failed: %s", SDL_GetError());
+        SDL_Log("TTF_Init failed: %s", SDL_GetError());
 
         SDL_Quit();
 
@@ -34,7 +34,7 @@ Console::Console(int width, int height, std::string_view title)
 
     if (!window)
     {
-        SDL_Log("Window Creation Failed: %s", SDL_GetError());
+        SDL_Log("Window creation failed: %s", SDL_GetError());
 
         TTF_Quit();
         SDL_Quit();
@@ -47,7 +47,7 @@ Console::Console(int width, int height, std::string_view title)
 
     if (!renderer)
     {
-        SDL_Log("Renderer Creation Failed: %s", SDL_GetError());
+        SDL_Log("Renderer creation failed: %s", SDL_GetError());
 
         SDL_DestroyWindow(window);
 
@@ -59,6 +59,11 @@ Console::Console(int width, int height, std::string_view title)
     }
 
     running = true;
+
+    if (!loadDefaultFont())
+    {
+        SDL_Log("Failed to load default font.");
+    }
 }
 
 Console::~Console()
@@ -94,16 +99,15 @@ void Console::pollEvents()
                 break;
 
             case SDL_EVENT_WINDOW_RESIZED:
-                windowWidth = event.window.data1;
+                windowWidth  = event.window.data1;
                 windowHeight = event.window.data2;
                 break;
         }
     }
 }
 
+
 void Console::present()
 {
-    SDL_SetRenderDrawColor(renderer, 30, 30, 30, 255);
-    SDL_RenderClear(renderer);
-    SDL_RenderPresent(renderer);
+    render();
 }

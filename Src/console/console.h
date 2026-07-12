@@ -94,4 +94,18 @@ private:
 
     std::filesystem::path currentFont;
     float currentFontSize = 18.0f;
+
+    void draw(
+        std::string_view text,
+        int x,
+        int y
+    );
+
+    void drawCharacter(
+        char32_t character,
+        int x,
+        int y
+    );
+    
+    void render();
 };

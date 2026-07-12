@@ -12,6 +12,7 @@ add_executable(TinyConsole
     Src/console/main.cpp
     Src/console/window.cpp
     Src/console/fonts.cpp
+    Src/console/renderer.cpp
 
     Src/Platform/platform.cpp
 )
