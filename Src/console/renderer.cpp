@@ -3,15 +3,18 @@
 #include <SDL3/SDL.h>
 #include <SDL3_ttf/SDL_ttf.h>
 
-void Console::draw(
+int Console::draw(
     std::string_view text,
     int x,
-    int y)
+    int y,
+    uint8_t r,
+    uint8_t g,
+    uint8_t b)
 {
     if (!renderer || !font || text.empty())
-        return;
+        return 0;
 
-    SDL_Color color{255, 255, 255, 255};
+    SDL_Color color{r, g, b, 255};
 
     SDL_Surface* surface =
         TTF_RenderText_Blended(
@@ -23,7 +26,7 @@ void Console::draw(
     if (!surface)
     {
         SDL_Log("TTF_RenderText_Blended failed: %s", SDL_GetError());
-        return;
+        return 0;
     }
 
     float width  = static_cast<float>(surface->w);
@@ -39,7 +42,7 @@ void Console::draw(
     if (!texture)
     {
         SDL_Log("SDL_CreateTextureFromSurface failed: %s", SDL_GetError());
-        return;
+        return 0;
     }
 
     SDL_FRect dst{
@@ -56,6 +59,8 @@ void Console::draw(
         &dst);
 
     SDL_DestroyTexture(texture);
+    
+    return static_cast<int>(width);
 }
 
 void Console::drawCharacter(
@@ -91,8 +96,18 @@ void Console::render()
 
     SDL_RenderClear(renderer);
 
-    // Temporary rendering test.
-    draw("TinyVM Console", 20, 20);
+    int yOffset = 10;
+    int lineHeight = font ? TTF_GetFontHeight(font) : 20;
+
+    for (const auto& line : textLines) {
+        if (!line.empty()) {
+            int xOffset = 10;
+            for (const auto& seg : line) {
+                xOffset += draw(seg.text, xOffset, yOffset, seg.r, seg.g, seg.b);
+            }
+        }
+        yOffset += lineHeight;
+    }
 
     SDL_RenderPresent(renderer);
 }

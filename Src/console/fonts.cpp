@@ -26,36 +26,11 @@ bool Console::loadDefaultFont(float size)
 {
     currentFontSize = size;
 
-    // Try every system font first.
-    for (const auto& directory : Platform::systemFontDirectories())
-    {
-        if (!std::filesystem::exists(directory))
-            continue;
-
-        for (const auto& entry :
-             std::filesystem::recursive_directory_iterator(directory))
-        {
-            if (!entry.is_regular_file())
-                continue;
-
-            auto extension = entry.path().extension().string();
-
-            if (extension != ".ttf" &&
-                extension != ".otf" &&
-                extension != ".ttc")
-            {
-                continue;
-            }
-
-            if (loadFont(entry.path(), size))
-                return true;
-        }
-    }
-
-    // Fall back to the bundled Nerd Font.
+    // Use the strictly monospaced bundled terminal font.
+    // This provides a consistent system terminal look across all platforms.
     return loadFont(
         Platform::fontsDirectory() /
-        "JetBrainsMonoNerdFontPropo-Regular.ttf",
+        "JetBrainsMonoNerdFontMono-Regular.ttf",
         size
     );
 }

@@ -47,7 +47,18 @@ std::filesystem::path Platform::executableDirectory()
 
 std::filesystem::path Platform::rootDirectory()
 {
-    return executableDirectory();
+    auto current = executableDirectory();
+    
+    // Check if Assets is in the current directory
+    if (std::filesystem::exists(current / "Assets"))
+        return current;
+
+    // Check if we are running from a build subdirectory (like 'build' or 'Build')
+    if (std::filesystem::exists(current.parent_path() / "Assets"))
+        return current.parent_path();
+
+    // Default fallback
+    return current;
 }
 
 std::filesystem::path Platform::assetsDirectory()

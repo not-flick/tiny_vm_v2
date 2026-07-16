@@ -1,20 +1,20 @@
 #include "console.h"
+#include "../TinyKernel/kernel.h"
 
 int main()
 {
-    Console console(
-        1280,
-        720,
-        "TinyVM"
-    );
+    // Initialize the kernel which creates the console
+    boot();
 
-    while (console.isOpen())
+    // Run the event loop using the console created by boot()
+    if (console)
     {
-        console.pollEvents();
-        console.present();
+        while (console_is_open(console))
+        {
+            console_poll_events(console);
+            console_present(console);
+        }
     }
-
-
 
     return 0;
 }

@@ -60,7 +60,7 @@ Console::Console(int width, int height, std::string_view title)
 
     running = true;
 
-    if (!loadDefaultFont())
+    if (!loadDefaultFont(16.0f))
     {
         SDL_Log("Failed to load default font.");
     }
@@ -110,4 +110,73 @@ void Console::pollEvents()
 void Console::present()
 {
     render();
+}
+
+void Console::write(std::string_view text) {
+    if (textLines.empty()) {
+        textLines.push_back({});
+    }
+    
+    size_t i = 0;
+    std::string currentText = "";
+    
+    auto commitText = [&]() {
+        if (!currentText.empty()) {
+            textLines.back().push_back({currentText, currentColorR, currentColorG, currentColorB});
+            currentText.clear();
+        }
+    };
+
+    while (i < text.length()) {
+        if (text[i] == '\n') {
+            commitText();
+            textLines.push_back({});
+            i++;
+        } else if (text[i] == '\x1b' && i + 1 < text.length() && text[i+1] == '[') {
+            commitText();
+            size_t end = text.find('m', i + 2);
+            if (end != std::string_view::npos) {
+                std::string_view code = text.substr(i + 2, end - (i + 2));
+                if (code == "32") { // Green
+                    currentColorR = 0; currentColorG = 255; currentColorB = 0;
+                } else if (code == "31") { // Red
+                    currentColorR = 255; currentColorG = 0; currentColorB = 0;
+                } else if (code == "33") { // Yellow
+                    currentColorR = 255; currentColorG = 255; currentColorB = 0;
+                } else if (code == "34") { // Blue
+                    currentColorR = 0; currentColorG = 0; currentColorB = 255;
+                } else if (code == "0") { // Reset
+                    currentColorR = 255; currentColorG = 255; currentColorB = 255;
+                }
+                i = end + 1;
+            } else {
+                i += 2; // Skip \x1b[ if malformed
+            }
+        } else {
+            currentText += text[i];
+            i++;
+        }
+    }
+    commitText();
+}
+
+void Console::writeLine(std::string_view text) {
+    write(text);
+    write("\n");
+}
+
+std::string Console::readLine() { return ""; }
+
+void Console::clear() {
+    textLines.clear();
+}
+
+void Console::resize(int width, int height) {
+    SDL_SetWindowSize(window, width, height);
+    windowWidth = width;
+    windowHeight = height;
+}
+
+void Console::setTitle(std::string_view title) {
+    SDL_SetWindowTitle(window, title.data());
 }

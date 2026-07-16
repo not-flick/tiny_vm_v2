@@ -13,6 +13,7 @@ add_executable(TinyConsole
     Src/console/window.cpp
     Src/console/fonts.cpp
     Src/console/renderer.cpp
+    Src/console/c_api.cpp
 
     Src/Platform/platform.cpp
 )
@@ -23,7 +24,13 @@ target_include_directories(TinyConsole PRIVATE
 )
 
 target_link_libraries(TinyConsole PRIVATE
-
+    TinyKernel
     SDL3::SDL3
     SDL3_ttf::SDL3_ttf
 )
+
+add_library(TinyKernel
+        Src/TinyKernel/kernel.c
+        Src/TinyKernel/kernel.h
+)
+
