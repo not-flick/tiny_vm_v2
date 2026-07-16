@@ -88,6 +88,9 @@ public:
 
     float fontSize() const;
 
+    SDL_Renderer* getRenderer() const { return renderer; }
+    SDL_Window* getWindow() const { return window; }
+
 
 private:
 

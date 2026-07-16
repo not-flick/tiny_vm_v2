@@ -7,12 +7,14 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 find_package(SDL3 REQUIRED)
 find_package(SDL3_ttf REQUIRED)
+find_package(SDL3_image REQUIRED)
 
 add_executable(TinyConsole
     Src/console/main.cpp
     Src/console/window.cpp
     Src/console/fonts.cpp
     Src/console/renderer.cpp
+    Src/console/BootLogo.cpp
     Src/console/c_api.cpp
 
     Src/Platform/platform.cpp
@@ -27,6 +29,7 @@ target_link_libraries(TinyConsole PRIVATE
     TinyKernel
     SDL3::SDL3
     SDL3_ttf::SDL3_ttf
+    SDL3_image::SDL3_image
 )
 
 add_library(TinyKernel
