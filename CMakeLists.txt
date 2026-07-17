@@ -18,6 +18,7 @@ add_executable(TinyConsole
     Src/console/c_api.cpp
 
     Src/Platform/platform.cpp
+    Src/Platform/fileio.c
 )
 
 target_include_directories(TinyConsole PRIVATE
@@ -35,5 +36,20 @@ target_link_libraries(TinyConsole PRIVATE
 add_library(TinyKernel
         Src/TinyKernel/kernel.c
         Src/TinyKernel/kernel.h
+        Src/TinyKernel/process.c
+        Src/TinyKernel/process.h
+        Src/Platform/fileio.c
 )
 
+add_executable(TinyVM
+    Src/TinyVM/tinyvm.cpp
+    Src/Platform/platform.cpp
+)
+
+target_include_directories(TinyVM PRIVATE
+    Src/Platform
+)
+
+target_link_libraries(TinyVM PRIVATE
+    TinyKernel
+)
