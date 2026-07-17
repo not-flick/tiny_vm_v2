@@ -68,4 +68,8 @@ vcpkg_installed/
 Testing/
 .cache/
 
+#agent files
 memory.md
+
+# TinyVM runtime filesystem
+tinyvm/
