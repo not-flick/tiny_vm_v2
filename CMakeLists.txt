@@ -24,10 +24,13 @@ add_executable(TinyConsole
 target_include_directories(TinyConsole PRIVATE
     Src/console
     Src/Platform
+        Src/shell
+
 )
 
 target_link_libraries(TinyConsole PRIVATE
     TinyKernel
+        tiny_shell
     SDL3::SDL3
     SDL3_ttf::SDL3_ttf
     SDL3_image::SDL3_image
@@ -53,3 +56,8 @@ target_include_directories(TinyVM PRIVATE
 target_link_libraries(TinyVM PRIVATE
     TinyKernel
 )
+add_library(tiny_shell
+        Src/shell/shell.cpp
+        Src/shell/shell.h
+        Src/shell/prompt.c
+        Src/shell/prompt.h)

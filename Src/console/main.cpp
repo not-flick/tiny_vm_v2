@@ -3,6 +3,7 @@
 #include "BootLogo.h"
 #include "../Platform/platform.h"
 #include <SDL3/SDL.h>
+#include "../shell/shell.h"
 
 int main()
 {
@@ -23,6 +24,8 @@ int main()
         // Show Boot Logo if available
         BootLogo logo;
         auto logoPath = Platform::assetsDirectory() / "boot/logo.png";
+
+
         
         if (logo.load(cpp_console->getRenderer(), logoPath)) {
             console_clear(console);
@@ -30,13 +33,18 @@ int main()
             console_clear(console);
         }
 
+
+        shell();
         // Run the main event loop
         while (console_is_open(console))
         {
             console_poll_events(console);
             console_present(console);
+
         }
     }
+
+
 
     return 0;
 }
