@@ -164,6 +164,7 @@ halt
 - CMake
 - SDL3
 - SDL3_ttf
+- cargo
 
 ```bash
 git clone https://github.com/not-flick/tiny_vm.git
