@@ -1,6 +1,7 @@
 #include <iostream>
 #include <string>
 
+#include "tinyvm.h"
 #include "../Platform/fileio.h"
 #include "../Platform/platform.h"
 #include "../TinyKernel/kernel.h"
@@ -9,7 +10,6 @@
 
 int main(){
     std::cout << "enter username: ";
-    std::string username;
     std::cin >> username;
 
     std::string os = Platform::name();

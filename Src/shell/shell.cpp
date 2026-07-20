@@ -1,6 +1,7 @@
 #include "../console/console.h"
 #include "shell.h"
 #include "prompt.h"
+#include "../TinyVM/tinyvm.h"
 
 #include <string>
 
@@ -8,17 +9,17 @@
 
 extern ConsoleHandle* console;
 
-void shell() {
+std::string prompt;
+
+void shell() 
+{
 
 
-    console_write(console, "Shell started!");
+    // console_write(console, "Shell started!");
 
-    // while (true){
-    //     std::string current_dir = "~";
-    //
-    //     console_write(console, current_dir.c_str());
-    //
-    //     break;  // Temporary
-    //
-    // }
+        std::string current_dir = username;
+
+        console_write(console, current_dir.c_str());
+    
+    
 }

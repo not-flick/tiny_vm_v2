@@ -33,8 +33,10 @@ int main()
             console_clear(console);
         }
 
+        // while (true){
+        //         shell();
+        // }
 
-        shell();
         // Run the main event loop
         while (console_is_open(console))
         {
@@ -44,6 +46,7 @@ int main()
         }
     }
 
+    shell();
 
 
     return 0;
