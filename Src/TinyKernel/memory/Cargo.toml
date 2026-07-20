@@ -1,6 +1,19 @@
 [package]
-name = "memory"
+name = "tvm_memory"
 version = "0.1.0"
 edition = "2024"
 
-[dependencies]
+[lib]
+name = "tvm_memory"
+path = "src/lib.rs"
+crate-type = [
+    "staticlib",
+    "cdylib"
+]
+
+[profile.release]
+opt-level = 3
+lto = "fat"
+codegen-units = 1
+panic = "abort"
+strip = true
