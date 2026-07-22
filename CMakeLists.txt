@@ -1,13 +1,18 @@
 cmake_minimum_required(VERSION 3.20)
 
-project(TinyVM)
+project(TinyVM LANGUAGES C CXX)
 
 # ==========================================================
-# C++ Standard
+# Settings
 # ==========================================================
+
+set(CMAKE_C_STANDARD 17)
+set(CMAKE_C_STANDARD_REQUIRED ON)
 
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
+
+set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 # ==========================================================
 # Dependencies
@@ -27,56 +32,64 @@ set(MEMORY_DIR
     ${CMAKE_CURRENT_SOURCE_DIR}/Src/TinyKernel/memory
 )
 
+set(TVM_MEMORY_INCLUDE
+    ${CMAKE_CURRENT_SOURCE_DIR}/Src/TinyKernel/include
+)
+
 set(TVM_MEMORY_LIB
     ${MEMORY_DIR}/target/release/libtvm_memory.a
 )
 
 add_custom_target(
-    tvm_memory
+    tvm_memory ALL
     COMMAND ${CARGO_EXECUTABLE} build --release
     WORKING_DIRECTORY ${MEMORY_DIR}
-    COMMENT "Building Rust memory library..."
+    COMMENT "Building Rust memory library"
 )
 
 # ==========================================================
 # TinyKernel
 # ==========================================================
 
-add_library(TinyKernel
+add_library(TinyKernel STATIC
     Src/TinyKernel/kernel.c
     Src/TinyKernel/process.c
-
     Src/Platform/fileio.c
-)
-
-target_include_directories(TinyKernel PUBLIC
-    Src/TinyKernel
-    Src/TinyKernel/include
+    Src/TinyKernel/ramauto.c
 )
 
 add_dependencies(TinyKernel
     tvm_memory
 )
 
-target_link_libraries(TinyKernel PRIVATE
-    ${TVM_MEMORY_LIB}
+target_include_directories(TinyKernel
+    PUBLIC
+        Src/TinyKernel
+        ${TVM_MEMORY_INCLUDE}
+)
+
+target_link_libraries(TinyKernel
+    PUBLIC
+        ${TVM_MEMORY_LIB}
 )
 
 # ==========================================================
 # Tiny Shell
 # ==========================================================
 
-add_library(tiny_shell
+add_library(tiny_shell STATIC
     Src/shell/prompt.c
     Src/shell/shell.cpp
 )
 
-target_include_directories(tiny_shell PUBLIC
-    Src/shell
+target_include_directories(tiny_shell
+    PUBLIC
+        Src/shell
 )
 
-target_link_libraries(tiny_shell PRIVATE
-    TinyKernel
+target_link_libraries(tiny_shell
+    PUBLIC
+        TinyKernel
 )
 
 # ==========================================================
@@ -95,18 +108,20 @@ add_executable(TinyConsole
     Src/Platform/fileio.c
 )
 
-target_include_directories(TinyConsole PRIVATE
-    Src/console
-    Src/Platform
+target_include_directories(TinyConsole
+    PRIVATE
+        Src/console
+        Src/Platform
+        Src/shell 
 )
 
-target_link_libraries(TinyConsole PRIVATE
-    TinyKernel
-    tiny_shell
-
-    SDL3::SDL3
-    SDL3_ttf::SDL3_ttf
-    SDL3_image::SDL3_image
+target_link_libraries(TinyConsole
+    PRIVATE
+        TinyKernel
+        tiny_shell
+        SDL3::SDL3
+        SDL3_ttf::SDL3_ttf
+        SDL3_image::SDL3_image
 )
 
 # ==========================================================
@@ -118,10 +133,12 @@ add_executable(TinyVM
     Src/Platform/platform.cpp
 )
 
-target_include_directories(TinyVM PRIVATE
-    Src/Platform
+target_include_directories(TinyVM
+    PRIVATE
+        Src/Platform
 )
 
-target_link_libraries(TinyVM PRIVATE
-    TinyKernel
+target_link_libraries(TinyVM
+    PRIVATE
+        TinyKernel
 )

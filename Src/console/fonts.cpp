@@ -1,5 +1,4 @@
 #include "console.h"
-
 #include "../Platform/platform.h"
 
 #include <filesystem>
