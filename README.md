@@ -212,13 +212,23 @@ Licensed under the **Apache 2.0 License**.
 
 </div>
 
-## Third-Party Assets
+## 📦 Third-Party Assets
 
-TinyVM bundles JetBrains Mono Nerd Font.
+### 🔤 JetBrains Mono Nerd Font
+
+TinyVM bundles **JetBrains Mono Nerd Font**.
 
 - JetBrains Mono © JetBrains
 - Licensed under the SIL Open Font License 1.1
+- Nerd Font patches © Nerd Fonts Project
 
-Nerd Font patches © Nerd Fonts Project
-https://github.com/ryanoasis/nerd-fonts
+> https://github.com/ryanoasis/nerd-fonts
 
+---
+
+### 🎨 Calligraphy
+
+> [!NOTE]
+> TinyVM's startup banner was created using **Calligraphy**, an open-source ASCII banner generator by **Evangelos "GeopJr" Paterakis**.
+
+Thanks for creating such an awesome tool—it helped give TinyVM its own identity from the very first boot.

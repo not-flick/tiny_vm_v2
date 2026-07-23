@@ -214,6 +214,10 @@ void Console::setTitle(std::string_view title) {
     SDL_SetWindowTitle(window, title.data());
 }
 
+void Console::close() {
+    running = false;
+}
+
 bool Console::loadBanner(const std::filesystem::path& path) {
     if (!std::filesystem::exists(path)) return false;
     bannerTexture = IMG_LoadTexture(renderer, path.string().c_str());

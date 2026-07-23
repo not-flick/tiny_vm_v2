@@ -54,6 +54,12 @@ void console_set_title(ConsoleHandle* console, const char* title) {
     }
 }
 
+void console_close(ConsoleHandle* console) {
+    if (console) {
+        reinterpret_cast<Console*>(console)->close();
+    }
+}
+
 bool console_is_open(ConsoleHandle* console) {
     if (console) {
         return reinterpret_cast<Console*>(console)->isOpen();

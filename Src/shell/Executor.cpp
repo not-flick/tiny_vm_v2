@@ -24,7 +24,8 @@ void Executor::execute(const Parser::Command& cmd) {
     } else if (cmd.program == "version") {
         console_write_line(console, "TinyShell v1.0");
     } else if (cmd.program == "exit") {
-        console_write_line(console, "Exit command not fully supported yet.");
+        console_write_line(console, "Exiting TinyVM...");
+        console_close(console);
     } else if (cmd.program == "mkdir") {
         if (cmd.arguments.empty()) {
             console_write_line(console, "mkdir: missing operand");
@@ -139,6 +140,9 @@ void Executor::execute(const Parser::Command& cmd) {
         } else {
             console_write_line(console, "Pending Restart");
         }
+    } else if (cmd.program == "reboot") {
+        console_write_line(console, "Rebooting TinyVM...");
+        console_close(console);
     } else {
         std::string err = "Unknown command: " + cmd.program;
         console_write_line(console, err.c_str());

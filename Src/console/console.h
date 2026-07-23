@@ -59,6 +59,8 @@ public:
     // Window
     // =============================
 
+    void close();
+    
     void resize(int width, int height);
 
     void setTitle(std::string_view title);
@@ -164,6 +166,7 @@ void console_clear(ConsoleHandle* console);
 
 void console_resize(ConsoleHandle* console, int width, int height);
 void console_set_title(ConsoleHandle* console, const char* title);
+void console_close(ConsoleHandle* console);
 
 bool console_is_open(ConsoleHandle* console);
 void console_poll_events(ConsoleHandle* console);
