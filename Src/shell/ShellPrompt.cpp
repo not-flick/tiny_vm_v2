@@ -5,7 +5,7 @@
 #include "../Platform/platform.h"
 
 ShellPrompt::ShellPrompt() {
-    hostname = "fedora"; // Default hostname
+    hostname = "tinyvm"; // Use "tinyvm" instead of default host OS
     currentDir = Platform::homeDirectory().string();
 }
 
@@ -27,8 +27,8 @@ void ShellPrompt::display() {
     }
     
     // Format: username@hostname:path$ 
-    // Using ANSI escape codes for coloring (green for user@host, blue for path)
-    std::string promptStr = "\x1b[32m" + username + "@" + hostname + "\x1b[0m:\x1b[34m" + displayPath + "\x1b[0m$ ";
+    // Username (Green 32), @ (White 37), Hostname (Cyan 36), : (White 37), Directory (Blue 34), $ (White 37)
+    std::string promptStr = "\x1b[32m" + username + "\x1b[37m@\x1b[36m" + hostname + "\x1b[37m:\x1b[34m" + displayPath + "\x1b[37m$ \x1b[0m";
     
     console_write(console, promptStr.c_str());
 }

@@ -1,6 +1,9 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <stdint.h>
+#include <string.h>
+
+#include "../Platform/fileio.h"
 
 #include "../console/console.h"
 
@@ -9,6 +12,7 @@
 #include "tvm_memory.h"
 
 ConsoleHandle* console = NULL;
+uint64_t current_virtual_ram = 0;
 
 void boot(void)
 {
@@ -16,7 +20,24 @@ void boot(void)
     /* Create Virtual Memory                            */
     /*--------------------------------------------------*/
 
-    uint64_t vm_ram = ramauto_resolve(TVM_RAM_AUTO);
+    uint64_t requested_ram = TVM_RAM_AUTO;
+    size_t conf_size = 0;
+    unsigned char* conf_data = fileio_read("tinyvm.conf", &conf_size);
+    if (conf_data) {
+        if (conf_size > 0) {
+            char* str = (char*)conf_data;
+            if (strncmp(str, "auto", 4) != 0) {
+                uint64_t parsed = strtoull(str, NULL, 10);
+                if (parsed > 0) {
+                    requested_ram = parsed;
+                }
+            }
+        }
+        free(conf_data);
+    }
+
+    uint64_t vm_ram = ramauto_resolve(requested_ram);
+    current_virtual_ram = vm_ram;
 
     Memory* vm_memory = memory_create(vm_ram);
 

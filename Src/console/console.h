@@ -92,12 +92,16 @@ public:
     SDL_Window* getWindow() const { return window; }
 
 
+    bool loadBanner(const std::filesystem::path& path);
+    void unloadBanner();
+
 private:
 
     // SDL objects
     SDL_Window* window = nullptr;
     SDL_Renderer* renderer = nullptr;
     TTF_Font* font = nullptr;
+    SDL_Texture* bannerTexture = nullptr;
 
     // Window state
     bool running = false;
@@ -105,6 +109,8 @@ private:
     // Window size
     int windowWidth = 0;
     int windowHeight = 0;
+    int bannerWidth = 0;
+    int bannerHeight = 0;
 
     std::filesystem::path currentFont;
     float currentFontSize = 14.0f;

@@ -8,6 +8,7 @@ extern "C" {
 #endif
 
 extern ConsoleHandle* console;
+extern uint64_t current_virtual_ram;
 void boot();
 
 #ifdef __cplusplus

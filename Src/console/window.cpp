@@ -2,6 +2,7 @@
 
 #include <SDL3/SDL.h>
 #include <SDL3_ttf/SDL_ttf.h>
+#include <SDL3_image/SDL_image.h>
 
 Console::Console(int width, int height, std::string_view title)
 {
@@ -70,6 +71,8 @@ Console::Console(int width, int height, std::string_view title)
 
 Console::~Console()
 {
+    unloadBanner();
+
     if (font)
         TTF_CloseFont(font);
 
@@ -163,6 +166,10 @@ void Console::write(std::string_view text) {
                     currentColorR = 255; currentColorG = 255; currentColorB = 0;
                 } else if (code == "34") { // Blue
                     currentColorR = 0; currentColorG = 0; currentColorB = 255;
+                } else if (code == "36") { // Cyan
+                    currentColorR = 0; currentColorG = 255; currentColorB = 255;
+                } else if (code == "37") { // White
+                    currentColorR = 255; currentColorG = 255; currentColorB = 255;
                 } else if (code == "0") { // Reset
                     currentColorR = 255; currentColorG = 255; currentColorB = 255;
                 }
@@ -205,4 +212,29 @@ void Console::resize(int width, int height) {
 
 void Console::setTitle(std::string_view title) {
     SDL_SetWindowTitle(window, title.data());
+}
+
+bool Console::loadBanner(const std::filesystem::path& path) {
+    if (!std::filesystem::exists(path)) return false;
+    bannerTexture = IMG_LoadTexture(renderer, path.string().c_str());
+    if (!bannerTexture) {
+        SDL_Log("Failed to load banner: %s", SDL_GetError());
+        return false;
+    }
+    
+    float w, h;
+    if (SDL_GetTextureSize(bannerTexture, &w, &h)) {
+        bannerWidth = static_cast<int>(w);
+        bannerHeight = static_cast<int>(h);
+        return true;
+    }
+    unloadBanner();
+    return false;
+}
+
+void Console::unloadBanner() {
+    if (bannerTexture) {
+        SDL_DestroyTexture(bannerTexture);
+        bannerTexture = nullptr;
+    }
 }

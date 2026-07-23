@@ -97,6 +97,28 @@ void Console::render()
     SDL_RenderClear(renderer);
 
     int yOffset = 10;
+    
+    // Draw banner if it exists
+    if (bannerTexture && bannerWidth > 0 && bannerHeight > 0) {
+        int winW, winH;
+        SDL_GetWindowSize(window, &winW, &winH);
+        
+        float targetRatio = 0.5f; // 50% width
+        float scaledW = static_cast<float>(winW) * targetRatio;
+        float scaleFactor = scaledW / static_cast<float>(bannerWidth);
+        float scaledH = static_cast<float>(bannerHeight) * scaleFactor;
+        
+        SDL_FRect dstRect;
+        dstRect.w = scaledW;
+        dstRect.h = scaledH;
+        dstRect.x = (winW - scaledW) / 2.0f;
+        dstRect.y = 20.0f; // some padding from top
+        
+        SDL_RenderTexture(renderer, bannerTexture, nullptr, &dstRect);
+        
+        yOffset = static_cast<int>(dstRect.y + dstRect.h) + 30; // padding below banner
+    }
+
     int lineHeight = font ? TTF_GetFontHeight(font) : 20;
 
     for (size_t i = 0; i < textLines.size(); ++i) {
