@@ -10,10 +10,12 @@
 #include "kernel.h"
 #include "ramauto.h"
 #include "tvm_memory.h"
+#include "page.h"
 
 ConsoleHandle* console = NULL;
 uint64_t current_virtual_ram = 0;
 
+Memory *vm_memory = NULL;
 void boot(void)
 {
     /*--------------------------------------------------*/
@@ -39,7 +41,10 @@ void boot(void)
     uint64_t vm_ram = ramauto_resolve(requested_ram);
     current_virtual_ram = vm_ram;
 
-    Memory* vm_memory = memory_create(vm_ram);
+    
+    vm_memory = memory_create(vm_ram);
+
+    Page *pages = getpages(vm_memory);
 
     if (!vm_memory)
     {
@@ -80,6 +85,20 @@ void boot(void)
         "\x1b[32m[OK]\x1b[0m Virtual RAM created (%s)\n",
         ramauto_to_string(vm_ram)
     );
+
+
+    console_write(console, buffer);
+
+    if (!pages)
+    {
+        snprintf(buffer, sizeof(buffer),
+            "\x1b[31m[FAIL]\x1b[0m Failed to get pages from virtual memory.\n");
+    }
+    else
+    {
+        snprintf(buffer, sizeof(buffer),
+            "\x1b[32m[OK]\x1b[0m Pages retrieved from virtual memory.\n");
+    }
 
     console_write(console, buffer);
 
