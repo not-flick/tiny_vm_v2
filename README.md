@@ -1,16 +1,13 @@
-
 <div align="center">
 
 # TinyVM
 
-### *A tiny virtual computer built from the ground up.*
+*A small virtual computer built from first principles.*
 
-*A modern C++ virtual machine designed for learning low-level systems by building an entire computer from scratch.*
-
-![Status](https://img.shields.io/badge/status-active_development-orange)
-![Language](https://img.shields.io/badge/C%2B%2B-20-blue)
-![Platform](https://img.shields.io/badge/platform-Windows%20%7C%20Linux-success)
-![License](https://img.shields.io/badge/license-Apache_2.0-green)
+[![License](https://img.shields.io/badge/license-Apache%202.0-green.svg)](#license)
+![C++20](https://img.shields.io/badge/C%2B%2B-20-blue)
+![Platform](https://img.shields.io/badge/platform-Linux%20%7C%20Windows-success)
+![Status](https://img.shields.io/badge/status-under%20development-orange)
 
 </div>
 
@@ -18,126 +15,106 @@
 
 ## Overview
 
-TinyVM is an educational virtual machine that recreates an entire computer in software.
+TinyVM is a software implementation of a complete computer.
 
-Instead of emulating x86, ARM, or RISC-V, TinyVM introduces its own architecture called **TVM_64** complete with its own CPU, memory system, instruction set, assembler, executable format, and operating environment.
+Unlike a traditional emulator, TinyVM does **not** emulate an existing architecture such as x86, ARM, or RISC-V. Instead, it implements its own machine architecture, **TVM_64**, together with its execution environment.
 
-The objective isn't simply to execute code.
+The project exists for one purpose:
 
-It's to understand **how computers actually work**.
+> **Build a computer by building every layer yourself.**
+
+Everything above the host operating system is implemented as part of TinyVM.
 
 ---
 
-## Features
+## Design Goals
 
-| | |
-|:--|:--|
-| 🖥️ | Custom **64-bit TVM_64** architecture |
-| ⚡ | Virtual CPU |
-| 💾 | Virtual RAM |
-| 🧠 | Custom ISA |
-| 🐚 | TinyShell |
-| 🖥 | SDL3-based console |
-| 🌍 | Cross-platform (Windows & Linux) |
-| 📚 | Modular, educational codebase |
+- Independent 64-bit architecture
+- Simple and readable implementation
+- Platform-independent codebase
+- Educational by design
+- Modular components
+- Minimal external dependencies
+
+---
+
+## Components
+
+| Component | Status |
+|-----------|--------|
+| TVM_64 Architecture | 🚧 In Development |
+| Virtual CPU | 🚧 In Development |
+| Virtual Memory | 🚧 In Development |
+| TinyKernel | 🚧 In Development |
+| TinyShell | 🚧 In Development |
+| SDL3 Console | ✔ Implemented |
+| Platform Layer | ✔ Implemented |
+| Assembler (FLASM) | Planned |
+| Executable Format | Planned |
+| Virtual Filesystem | Planned |
+| Networking | Planned |
 
 ---
 
 ## Architecture
 
-```
-          +----------------+
-          |    TinyShell   |
-          +----------------+
-                   │
-                   ▼
-          +----------------+
-          |   TinyKernel   |
-          +----------------+
-                   │
-                   ▼
-          +----------------+
-          |      TVM_64    |
-          |  Virtual CPU   |
-          +----------------+
-             │         │
-      +------+         +------+
-      ▼                       ▼
-+------------+        +----------------+
-| Virtual RAM|        |  Syscall Layer |
-+------------+        +----------------+
-             │
-             ▼
-      Host Operating System
+```text
+                 TinyShell
+                     │
+                     ▼
+                TinyKernel
+                     │
+        ┌────────────┴────────────┐
+        │                         │
+        ▼                         ▼
+   TVM_64 CPU               System Calls
+        │
+        ▼
+  Virtual Memory
+        │
+        ▼
+ Host Operating System
 ```
 
 ---
 
-## Project Structure
+## Project Layout
 
 ```text
 TinyVM/
 │
-├── Core/          # VM core
-├── Console/       # SDL3 console
-├── ISA/           # TVM_64 instruction set
-├── Kernel/        # TinyKernel
-├── Shell/         # TinyShell
-├── Platform/      # Platform abstraction
-├── Assembler/     # FLASM (planned)
-└── ...
+├── Src/
+│   ├── TinyKernel/
+│   ├── TinyShell/
+│   ├── TinyConsole/
+│   ├── TinyVM/
+│   └── ...
+│
+├── Assets/
+├── CMakeLists.txt
+└── README.md
 ```
 
 ---
 
 ## Philosophy
 
-TinyVM follows one simple idea:
+TinyVM intentionally avoids implementing an existing ISA.
 
-> **Learn computers by building one.**
+Instead, every subsystem is designed and implemented specifically for this project.
 
-Every component is built from scratch.
+That includes:
 
+- Instruction Set Architecture
 - CPU
-- Memory
-- Instructions
+- Memory Manager
 - System Calls
-- Executable Format
+- Kernel
 - Shell
-- Operating Environment
+- Executable Format
+- Toolchain
 
-No shortcuts.
-
-No existing architecture.
-
-Just a tiny computer built one layer at a time.
-
----
-
-## Roadmap
-
-### Core
-
-- [x] Project architecture
-- [x] SDL3 Console
-- [x] Platform layer
-- [x] Virtual memory
-- [ ] CPU execution
-- [ ] Instruction decoder
-
-### Tools
-
-- [ ] FLASM assembler
-- [ ] Executable format
-- [ ] Debugger
-- [ ] Disassembler
-
-### System
-
-- [ ] TinyKernel
-- [ ] TinyShell
-- [ ] Virtual filesystem
-- [ ] Networking
+The objective is understanding the implementation of a computer—not merely using one.
 
 ---
 
@@ -162,9 +139,9 @@ halt
 
 - C++20
 - CMake
+- Rust (Cargo)
 - SDL3
 - SDL3_ttf
-- cargo
 
 ```bash
 git clone https://github.com/not-flick/tiny_vm.git
@@ -172,63 +149,99 @@ git clone https://github.com/not-flick/tiny_vm.git
 cd tiny_vm
 
 cmake -B build
-
 cmake --build build
 ```
 
 ---
 
-## Why TinyVM?
+## Roadmap
 
-Most emulators teach you **how an existing CPU works.**
+### Core
 
-TinyVM teaches you **how a CPU is built.**
+- [x] Project structure
+- [x] SDL3 console
+- [x] Platform abstraction
+- [x] Virtual memory backend
+- [ ] CPU execution engine
+- [ ] Instruction decoder
+- [ ] Exception handling
 
-It is designed as a playground for experimenting with computer architecture, instruction sets, operating systems, compilers, and virtual hardware.
+### System
+
+- [ ] TinyKernel
+- [ ] TinyShell
+- [ ] Process management
+- [ ] Virtual filesystem
+- [ ] Scheduler
+- [ ] Networking
+
+### Toolchain
+
+- [ ] FLASM assembler
+- [ ] Linker
+- [ ] Executable format
+- [ ] Debugger
+- [ ] Disassembler
 
 ---
 
-## Current Status
+## Project Status
 
-> 🚧 **Work in Progress**
+TinyVM is under active development.
 
-The architecture is evolving rapidly as new components are implemented.
+Internal interfaces are expected to change as the architecture evolves.
 
-Expect frequent changes while TinyVM grows into a complete virtual computer platform.
+Compatibility between revisions is **not** guaranteed until a stable release is published.
+
+---
+
+## Contributing
+
+At this stage the project is primarily experimental.
+
+Bug reports, discussions, and design suggestions are always welcome.
 
 ---
 
 ## License
 
-Licensed under the **Apache 2.0 License**.
+TinyVM is licensed under the **Apache License 2.0**.
+
+See the `LICENSE` file for details.
 
 ---
 
-<div align="center">
+# Third-Party Assets
 
-*"Every computer began as an idea."*
-
-**TinyVM is no different.**
-
-</div>
-
-## 📦 Third-Party Assets
-
-### 🔤 JetBrains Mono Nerd Font
+### JetBrains Mono Nerd Font
 
 TinyVM bundles **JetBrains Mono Nerd Font**.
 
 - JetBrains Mono © JetBrains
-- Licensed under the SIL Open Font License 1.1
 - Nerd Font patches © Nerd Fonts Project
+- Licensed under the SIL Open Font License 1.1
 
-> https://github.com/ryanoasis/nerd-fonts
+Repositories:
+
+- https://github.com/JetBrains/JetBrainsMono
+- https://github.com/ryanoasis/nerd-fonts
 
 ---
 
-### 🎨 Calligraphy
+### Calligraphy
 
-> [!NOTE]
-> TinyVM's startup banner was created using **Calligraphy**, an open-source ASCII banner generator by **Evangelos "GeopJr" Paterakis**.
+TinyVM's startup banner is generated using **Calligraphy**, an open-source ASCII banner generator developed by **Evangelos "GeopJr" Paterakis**.
 
-Thanks for creating such an awesome tool—it helped give TinyVM its own identity from the very first boot.
+The project is used to generate the boot banner displayed by TinyVM.
+
+Repository:
+
+- https://github.com/GeopJr/Calligraphy
+
+<div align="center">
+
+*"Programs execute instructions.*
+
+*Systems execute ideas."*
+
+</div>
