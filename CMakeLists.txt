@@ -56,6 +56,8 @@ add_library(TinyKernel STATIC
     Src/TinyKernel/process.c
     Src/Platform/fileio.c
     Src/TinyKernel/ramauto.c
+    Src/TinyKernel/page.c
+    Src/TinyKernel/page.h
 )
 
 add_dependencies(TinyKernel
@@ -80,6 +82,13 @@ target_link_libraries(TinyKernel
 add_library(tiny_shell STATIC
     Src/shell/prompt.c
     Src/shell/shell.cpp
+    Src/shell/Input.cpp
+    Src/shell/Parser.cpp
+    Src/shell/Executor.cpp
+    Src/shell/History.cpp
+    Src/shell/ShellPrompt.cpp
+    Src/shell/Renderer.cpp
+    Src/shell/ShellSystem.cpp
 )
 
 target_include_directories(tiny_shell

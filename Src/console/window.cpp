@@ -60,6 +60,8 @@ Console::Console(int width, int height, std::string_view title)
 
     running = true;
 
+    SDL_StartTextInput(window);
+
     if (!loadDefaultFont(16.0f))
     {
         SDL_Log("Failed to load default font.");
@@ -101,6 +103,22 @@ void Console::pollEvents()
             case SDL_EVENT_WINDOW_RESIZED:
                 windowWidth  = event.window.data1;
                 windowHeight = event.window.data2;
+                break;
+
+            case SDL_EVENT_TEXT_INPUT:
+                currentInput += event.text.text;
+                break;
+
+            case SDL_EVENT_KEY_DOWN:
+                if (event.key.key == SDLK_BACKSPACE) {
+                    if (!currentInput.empty()) {
+                        // Assuming ASCII for now. Proper UTF-8 backspace requires more complex handling.
+                        currentInput.pop_back();
+                    }
+                } else if (event.key.key == SDLK_RETURN || event.key.key == SDLK_KP_ENTER) {
+                    writeLine(currentInput);
+                    enterPressed = true;
+                }
                 break;
         }
     }
@@ -165,7 +183,15 @@ void Console::writeLine(std::string_view text) {
     write("\n");
 }
 
-std::string Console::readLine() { return ""; }
+std::string Console::readLine() {
+    if (enterPressed) {
+        std::string res = currentInput;
+        currentInput.clear();
+        enterPressed = false;
+        return res;
+    }
+    return "";
+}
 
 void Console::clear() {
     textLines.clear();

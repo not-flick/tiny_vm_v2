@@ -4,6 +4,7 @@
 #include "../Platform/platform.h"
 #include <SDL3/SDL.h>
 #include "../shell/shell.h"
+#include "../shell/ShellSystem.h"
 
 int main()
 {
@@ -33,21 +34,17 @@ int main()
             console_clear(console);
         }
 
-        // while (true){
-        //         shell();
-        // }
+        ShellSystem shell_sys;
 
         // Run the main event loop
         while (console_is_open(console))
         {
             console_poll_events(console);
+            shell_sys.update();
             console_present(console);
 
         }
     }
-
-    shell();
-
 
     return 0;
 }

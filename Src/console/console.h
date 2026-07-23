@@ -110,6 +110,9 @@ private:
     float currentFontSize = 14.0f;
     std::vector<TextLine> textLines;
     
+    std::string currentInput;
+    bool enterPressed = false;
+
     uint8_t currentColorR = 255;
     uint8_t currentColorG = 255;
     uint8_t currentColorB = 255;

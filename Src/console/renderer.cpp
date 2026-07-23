@@ -99,11 +99,17 @@ void Console::render()
     int yOffset = 10;
     int lineHeight = font ? TTF_GetFontHeight(font) : 20;
 
-    for (const auto& line : textLines) {
-        if (!line.empty()) {
-            int xOffset = 10;
-            for (const auto& seg : line) {
-                xOffset += draw(seg.text, xOffset, yOffset, seg.r, seg.g, seg.b);
+    for (size_t i = 0; i < textLines.size(); ++i) {
+        int xOffset = 10;
+        for (const auto& seg : textLines[i]) {
+            xOffset += draw(seg.text, xOffset, yOffset, seg.r, seg.g, seg.b);
+        }
+
+        if (i == textLines.size() - 1 && !textLines[i].empty()) {
+            xOffset += draw(currentInput, xOffset, yOffset, 255, 255, 255);
+            // Blinking cursor
+            if ((SDL_GetTicks() / 500) % 2 == 0) {
+                draw("|", xOffset, yOffset, 255, 255, 255);
             }
         }
         yOffset += lineHeight;
