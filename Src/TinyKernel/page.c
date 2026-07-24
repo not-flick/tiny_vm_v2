@@ -23,6 +23,7 @@ Page *getpages(Memory *memory)
     return pages;
 }
 
+
 void freepages(Page *pages)
 {
     free(pages);
