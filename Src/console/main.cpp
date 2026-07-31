@@ -35,14 +35,23 @@ int main()
             console_clear(console);
         }
 
-        cpp_console->loadBanner(Platform::assetsDirectory() / "banner/banner.png");
-        
-        console_write_line(console, "TinyVM v0.1");
-        console_write_line(console, "TVM_64 Architecture\n");
+        // ---- Boot banner is now part of the scrollback history ----
+        // Written as text so it scrolls, is selectable, and is copyable.
+        console_write_line(console, "\x1b[36m  _____ _             __   ____  __ \x1b[0m");
+        console_write_line(console, "\x1b[36m |_   _(_)_ __  _   _\\ \\ / /  \\/  |\x1b[0m");
+        console_write_line(console, "\x1b[36m   | | | | '_ \\| | | |\\ V /| |\\/| |\x1b[0m");
+        console_write_line(console, "\x1b[36m   | | | | | | | |_| | | | | |  | |\x1b[0m");
+        console_write_line(console, "\x1b[36m   |_| |_|_| |_|\\__, | |_| |_|  |_|\x1b[0m");
+        console_write_line(console, "\x1b[36m                 |___/              \x1b[0m");
+        console_write_line(console, "");
+        console_write_line(console, "\x1b[37mTinyVM v0.1  —  TVM_64 Architecture\x1b[0m");
+        console_write_line(console, "");
         std::string hostRamMsg = "Host RAM    : " + std::string(ramauto_to_string(ramauto_host_ram()));
-        std::string vmRamMsg   = "Virtual RAM : " + std::string(ramauto_to_string(current_virtual_ram)) + "\n";
+        std::string vmRamMsg   = "Virtual RAM : " + std::string(ramauto_to_string(current_virtual_ram));
         console_write_line(console, hostRamMsg.c_str());
         console_write_line(console, vmRamMsg.c_str());
+        console_write_line(console, "");
+
 
         ShellSystem shell_sys;
 

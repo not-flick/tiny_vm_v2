@@ -89,6 +89,8 @@ add_library(tiny_shell STATIC
     Src/shell/ShellPrompt.cpp
     Src/shell/Renderer.cpp
     Src/shell/ShellSystem.cpp
+    Src/shell/Completion.cpp
+    Src/shell/HelpText.cpp
 )
 
 target_include_directories(tiny_shell

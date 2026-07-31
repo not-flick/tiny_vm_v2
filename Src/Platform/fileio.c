@@ -95,3 +95,122 @@ bool fileio_rmdir(const char* dirpath) {
     if (!dirpath) return false;
     return RMDIR(dirpath) == 0;
 }
+
+bool fileio_delete(const char* filepath) {
+    if (!filepath) return false;
+    return remove(filepath) == 0;
+}
+
+bool fileio_rename(const char* src, const char* dst) {
+    if (!src || !dst) return false;
+    return rename(src, dst) == 0;
+}
+
+bool fileio_copy(const char* src, const char* dst) {
+    if (!src || !dst) return false;
+
+    FILE* fsrc = fopen(src, "rb");
+    if (!fsrc) return false;
+
+    FILE* fdst = fopen(dst, "wb");
+    if (!fdst) { fclose(fsrc); return false; }
+
+    char buf[4096];
+    size_t n;
+    bool ok = true;
+    while ((n = fread(buf, 1, sizeof(buf), fsrc)) > 0) {
+        if (fwrite(buf, 1, n, fdst) != n) { ok = false; break; }
+    }
+    fclose(fsrc);
+    fclose(fdst);
+    if (!ok) remove(dst);
+    return ok;
+}
+
+#ifdef _WIN32
+#include <windows.h>
+char** fileio_list_dir(const char* dirpath, size_t* out_count) {
+    if (!dirpath || !out_count) return NULL;
+    *out_count = 0;
+
+    char pattern[512];
+    snprintf(pattern, sizeof(pattern), "%s\\*", dirpath);
+
+    WIN32_FIND_DATAA fd;
+    HANDLE h = FindFirstFileA(pattern, &fd);
+    if (h == INVALID_HANDLE_VALUE) return NULL;
+
+    /* First pass: count */
+    size_t count = 0;
+    do {
+        if (strcmp(fd.cFileName, ".") != 0 && strcmp(fd.cFileName, "..") != 0)
+            ++count;
+    } while (FindNextFileA(h, &fd));
+    FindClose(h);
+
+    char** list = (char**)malloc(count * sizeof(char*));
+    if (!list) return NULL;
+
+    h = FindFirstFileA(pattern, &fd);
+    if (h == INVALID_HANDLE_VALUE) { free(list); return NULL; }
+
+    size_t i = 0;
+    do {
+        if (strcmp(fd.cFileName, ".") == 0 || strcmp(fd.cFileName, "..") == 0) continue;
+        list[i++] = strdup(fd.cFileName);
+    } while (FindNextFileA(h, &fd) && i < count);
+    FindClose(h);
+
+    *out_count = i;
+    return list;
+}
+#else
+#include <dirent.h>
+#include <string.h>
+char** fileio_list_dir(const char* dirpath, size_t* out_count) {
+    if (!dirpath || !out_count) return NULL;
+    *out_count = 0;
+
+    DIR* d = opendir(dirpath);
+    if (!d) return NULL;
+
+    /* First pass: count entries */
+    size_t count = 0;
+    struct dirent* ent;
+    while ((ent = readdir(d)) != NULL) {
+        if (strcmp(ent->d_name, ".") != 0 && strcmp(ent->d_name, "..") != 0)
+            ++count;
+    }
+    rewinddir(d);
+
+    char** list = (char**)malloc(count * sizeof(char*));
+    if (!list) { closedir(d); return NULL; }
+
+    size_t i = 0;
+    while ((ent = readdir(d)) != NULL && i < count) {
+        if (strcmp(ent->d_name, ".") == 0 || strcmp(ent->d_name, "..") == 0) continue;
+        list[i++] = strdup(ent->d_name);
+    }
+    closedir(d);
+    *out_count = i;
+    return list;
+}
+#endif
+
+void fileio_list_free(char** list, size_t count) {
+    if (!list) return;
+    for (size_t i = 0; i < count; ++i) free(list[i]);
+    free(list);
+}
+
+bool fileio_is_dir(const char* path) {
+    if (!path) return false;
+#ifdef _WIN32
+    DWORD attr = GetFileAttributesA(path);
+    return attr != INVALID_FILE_ATTRIBUTES && (attr & FILE_ATTRIBUTE_DIRECTORY);
+#else
+    struct stat st;
+    if (stat(path, &st) != 0) return false;
+    return S_ISDIR(st.st_mode);
+#endif
+}

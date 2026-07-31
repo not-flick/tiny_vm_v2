@@ -48,6 +48,16 @@ public:
 
     std::string readLine();
 
+    // Read / replace the live input line (used by history recall & tab completion).
+    std::string     inputLine() const   { return currentInput; }
+    void            setInputLine(const std::string& s) { currentInput = s; }
+
+    // Consume events produced by Up/Down arrow and Tab keys.
+    // Returns true once per keypress and resets the flag.
+    bool consumeHistoryUp()   { if (historyUpPending)   { historyUpPending   = false; return true; } return false; }
+    bool consumeHistoryDown() { if (historyDownPending) { historyDownPending = false; return true; } return false; }
+    bool consumeTab()         { if (tabPending)         { tabPending         = false; return true; } return false; }
+
 
     // =============================
     // Screen
@@ -133,7 +143,12 @@ private:
 
     // ---- Input -----------------------------------------------
     std::string currentInput;
-    bool        enterPressed = false;
+    bool        enterPressed       = false;
+
+    // ---- Key-event flags consumed by the shell ---------------
+    bool        historyUpPending   = false;
+    bool        historyDownPending = false;
+    bool        tabPending         = false;
 
     // ---- Mouse state (for selection) -------------------------
     bool        mouseDown        = false;

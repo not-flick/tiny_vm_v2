@@ -5,17 +5,19 @@
 #include "History.h"
 #include "ShellPrompt.h"
 #include "Renderer.h"
+#include "Completion.h"
 
 class ShellSystem {
 public:
     ShellSystem();
     void update();
 private:
-    Input input;
-    Parser parser;
-    Executor executor;
-    History history;
+    History     history;
     ShellPrompt prompt;
-    Renderer renderer;
-    bool needsPrompt = true;
+    Completion  completion;
+    Input       input;
+    Parser      parser;
+    Executor    executor;
+    Renderer    renderer;
+    bool        needsPrompt = true;
 };

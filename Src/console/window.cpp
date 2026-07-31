@@ -137,6 +137,20 @@ void Console::pollEvents()
                 enterPressed = true;
                 break;
 
+            // -- history navigation --
+            case SDLK_UP:
+                historyUpPending = true;
+                break;
+
+            case SDLK_DOWN:
+                historyDownPending = true;
+                break;
+
+            // -- tab completion --
+            case SDLK_TAB:
+                tabPending = true;
+                break;
+
             // -- clipboard --
             case SDLK_C:
                 if (ctrl && shift) {
@@ -441,12 +455,10 @@ int Console::lineHeight() const {
 }
 
 int Console::bannerBottom() const {
-    if (!bannerTexture || bannerWidth == 0 || bannerHeight == 0)
-        return 10; // just top padding
-    int winW = windowWidth;
-    float scaledW  = winW * 0.5f;
-    float scaledH  = (float)bannerHeight * (scaledW / (float)bannerWidth);
-    return (int)(20.0f + scaledH) + 30; // y + banner + padding
+    // The boot banner is part of the scrollback buffer, not a fixed overlay.
+    // Always return the top padding constant so the renderer needs no
+    // special-casing for a banner texture.
+    return 10;
 }
 
 std::string Console::lineText(std::size_t idx) const {

@@ -86,25 +86,10 @@ void Console::render()
     SDL_SetRenderDrawColor(renderer, 18, 18, 25, 255); // dark navy
     SDL_RenderClear(renderer);
 
-    int yOffset = 10;
-
-    // ---- Banner (optional) -----------------------------------
-    if (bannerTexture && bannerWidth > 0 && bannerHeight > 0) {
-        int winW = windowWidth;
-        float scaledW = winW * 0.5f;
-        float scaledH = (float)bannerHeight * (scaledW / (float)bannerWidth);
-
-        SDL_FRect dstRect;
-        dstRect.w = scaledW;
-        dstRect.h = scaledH;
-        dstRect.x = (winW - scaledW) / 2.0f;
-        dstRect.y = 20.0f;
-        SDL_RenderTexture(renderer, bannerTexture, nullptr, &dstRect);
-
-        yOffset = (int)(dstRect.y + dstRect.h) + 30;
-    }
-
     // ---- Text area metrics -----------------------------------
+    // yOffset is always 10 (top padding). The boot banner is part of
+    // the scrollback history, not a fixed overlay.
+    int yOffset = bannerBottom();
     int lh        = lineHeight();
     int textTop   = yOffset;
     int textAreaH = windowHeight - textTop;

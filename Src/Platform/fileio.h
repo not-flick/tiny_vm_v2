@@ -61,6 +61,59 @@ bool fileio_mkdir(const char* dirpath);
  */
 bool fileio_rmdir(const char* dirpath);
 
+/**
+ * Deletes a file.
+ *
+ * @param filepath The path to the file to delete.
+ * @return true on success, false on failure.
+ */
+bool fileio_delete(const char* filepath);
+
+/**
+ * Renames or moves a file or directory.
+ *
+ * @param src Source path.
+ * @param dst Destination path.
+ * @return true on success, false on failure.
+ */
+bool fileio_rename(const char* src, const char* dst);
+
+/**
+ * Copies a file from src to dst.
+ *
+ * @param src Source file path.
+ * @param dst Destination file path.
+ * @return true on success, false on failure.
+ */
+bool fileio_copy(const char* src, const char* dst);
+
+/**
+ * Lists the contents of a directory.
+ * Returns a heap-allocated array of heap-allocated strings.
+ * Free with fileio_list_free() when done.
+ *
+ * @param dirpath    Directory to list.
+ * @param out_count  Set to the number of entries on success.
+ * @return Array of C strings, or NULL on failure.
+ */
+char** fileio_list_dir(const char* dirpath, size_t* out_count);
+
+/**
+ * Frees the array returned by fileio_list_dir().
+ *
+ * @param list   The array to free.
+ * @param count  The number of entries in the array.
+ */
+void fileio_list_free(char** list, size_t count);
+
+/**
+ * Returns true if the given path exists and is a directory.
+ *
+ * @param path The path to check.
+ * @return true if it is a directory, false otherwise.
+ */
+bool fileio_is_dir(const char* path);
+
 #ifdef __cplusplus
 }
 #endif
