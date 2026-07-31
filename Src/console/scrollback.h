@@ -1,20 +1,19 @@
 #pragma once
 // ============================================================
-// scrollback.h  –  Circular scrollback line buffer
+// scrollback.h  –  Circular scrollback buffer
 // ============================================================
-// Stores TextLine objects in a fixed-capacity ring buffer.
-// When the buffer is full the oldest line is silently discarded.
-// Access is always O(1); iteration for rendering uses the
-// firstVisible / lastVisible range so we never touch the full
-// history on every frame.
+// Stores ConsoleEntry objects (Text or Image) in a fixed-capacity 
+// ring buffer. When the buffer is full the oldest entry is silently 
+// discarded.
 // ============================================================
 
 #include <cstddef>
 #include <string>
 #include <vector>
 
+struct SDL_Texture;
+
 // Forward-declare the segment type used throughout the console.
-// The full definition lives in console.h which includes this file.
 struct TextSegment {
     std::string text;
     uint8_t r = 255;
@@ -23,39 +22,64 @@ struct TextSegment {
 };
 using TextLine = std::vector<TextSegment>;
 
+struct ConsoleEntry {
+    enum class Type { Text, Image };
+    Type type = Type::Text;
+    
+    // For Text
+    TextLine textLine;
+    
+    // For Image
+    SDL_Texture* texture = nullptr;
+    int imageWidth = 0;
+    int imageHeight = 0;
+};
+
 class ScrollbackBuffer {
 public:
     // ---- construction ----------------------------------------
     explicit ScrollbackBuffer(std::size_t capacity = 10000)
         : mCapacity(capacity)
-        , mLines(capacity)
+        , mEntries(capacity)
     {}
 
     // ---- mutation --------------------------------------------
 
-    // Append a fully formed line.  Never fails – oldest line is
-    // silently discarded when the buffer is at capacity.
-    void pushLine(const TextLine& line) {
+    void pushEntry(const ConsoleEntry& entry) {
         if (mSize < mCapacity) {
-            mLines[(mStart + mSize) % mCapacity] = line;
+            mEntries[(mStart + mSize) % mCapacity] = entry;
             ++mSize;
         } else {
-            mLines[mStart] = line;
+            mEntries[mStart] = entry;
             mStart = (mStart + 1) % mCapacity;
         }
     }
 
-    // Replace the last line in-place (used while building an
-    // incomplete line that hasn't received a newline yet).
-    void replaceLastLine(const TextLine& line) {
-        if (mSize == 0) { pushLine(line); return; }
-        mLines[(mStart + mSize - 1) % mCapacity] = line;
+    void pushLine(const TextLine& line) {
+        ConsoleEntry entry;
+        entry.type = ConsoleEntry::Type::Text;
+        entry.textLine = line;
+        pushEntry(entry);
     }
 
-    // Access the last stored line for appending segments.
+    void replaceLastLine(const TextLine& line) {
+        if (mSize == 0) { pushLine(line); return; }
+        std::size_t idx = (mStart + mSize - 1) % mCapacity;
+        if (mEntries[idx].type == ConsoleEntry::Type::Text) {
+            mEntries[idx].textLine = line;
+        } else {
+            pushLine(line);
+        }
+    }
+
     TextLine& lastLine() {
         if (mSize == 0) { pushLine({}); }
-        return mLines[(mStart + mSize - 1) % mCapacity];
+        std::size_t idx = (mStart + mSize - 1) % mCapacity;
+        if (mEntries[idx].type != ConsoleEntry::Type::Text) {
+            pushLine({});
+            idx = (mStart + mSize - 1) % mCapacity;
+        }
+        return mEntries[idx].textLine;
     }
 
     void clear() {
@@ -65,9 +89,13 @@ public:
 
     // ---- queries ---------------------------------------------
 
-    // Random access by logical index (0 = oldest, size()-1 = newest).
+    const ConsoleEntry& entryAt(std::size_t idx) const {
+        return mEntries[(mStart + idx) % mCapacity];
+    }
+    
+    // Legacy support, returns empty if not text
     const TextLine& lineAt(std::size_t idx) const {
-        return mLines[(mStart + idx) % mCapacity];
+        return mEntries[(mStart + idx) % mCapacity].textLine;
     }
 
     std::size_t size()     const { return mSize; }
@@ -77,19 +105,19 @@ public:
 
     void setCapacity(std::size_t newCap) {
         if (newCap == mCapacity) return;
-        std::vector<TextLine> tmp(newCap);
+        std::vector<ConsoleEntry> tmp(newCap);
         std::size_t keep = (mSize < newCap) ? mSize : newCap;
         for (std::size_t i = 0; i < keep; ++i)
-            tmp[i] = lineAt(mSize - keep + i);   // keep the newest lines
-        mLines.swap(tmp);
+            tmp[i] = entryAt(mSize - keep + i);
+        mEntries.swap(tmp);
         mStart    = 0;
         mSize     = keep;
         mCapacity = newCap;
     }
 
 private:
-    std::size_t           mCapacity;
-    std::vector<TextLine> mLines;
-    std::size_t           mStart = 0;  // index of the oldest line
-    std::size_t           mSize  = 0;  // number of valid lines
+    std::size_t               mCapacity;
+    std::vector<ConsoleEntry> mEntries;
+    std::size_t               mStart = 0;  // index of the oldest entry
+    std::size_t               mSize  = 0;  // number of valid entries
 };

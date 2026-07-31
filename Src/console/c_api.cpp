@@ -24,7 +24,15 @@ void console_write_line(ConsoleHandle* console, const char* text) {
     }
 }
 
+bool console_write_image(ConsoleHandle* console, const char* path) {
+    if (console && path) {
+        return reinterpret_cast<Console*>(console)->writeImage(path);
+    }
+    return false;
+}
+
 char* console_read_line(ConsoleHandle* console) {
+
     if (console) {
         std::string str = reinterpret_cast<Console*>(console)->readLine();
         char* cstr = (char*)malloc(str.length() + 1);

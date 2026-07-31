@@ -35,20 +35,39 @@ void Executor::error(const char* cmd, const char* msg) {
         (std::string("\x1b[31m") + cmd + ": " + msg + "\x1b[0m").c_str());
 }
 
-std::string Executor::resolvePath(const std::string& arg) const {
-    if (arg.empty()) return prompt.getCurrentDir();
-    if (arg[0] == '/') {
-        // Absolute path in the virtual FS → prepend virtual root
-        std::string vroot = Platform::rootDirectory().string() + "/tinyvm";
-        return vroot + arg;
+std::string Executor::resolveVirtualPath(const std::string& arg, const std::string& cwd) {
+    std::string base = (arg.empty() || arg[0] != '/') ? cwd : "/";
+    std::string path = (arg.empty() || arg[0] != '/') ? (base + "/" + arg) : arg;
+
+    // Canonicalize in pure virtual space
+    std::vector<std::string> parts;
+    std::size_t start = 0;
+    while (start < path.length()) {
+        std::size_t end = path.find('/', start);
+        if (end == std::string::npos) end = path.length();
+        std::string part = path.substr(start, end - start);
+        start = end + 1;
+
+        if (part.empty() || part == ".") continue;
+        if (part == "..") {
+            if (!parts.empty()) parts.pop_back();
+            // If parts is empty, it means we tried to go above root (e.g., `cd ..` from `/`).
+            // It just stays at `/` (standard behavior).
+        } else {
+            parts.push_back(part);
+        }
     }
-    // Relative path → resolve against cwd
-    namespace fs = std::filesystem;
-    fs::path p = fs::path(prompt.getCurrentDir()) / arg;
-    // Normalise (removes ".." etc.) without checking existence
-    std::error_code ec;
-    auto canonical = fs::weakly_canonical(p, ec);
-    return ec ? p.string() : canonical.string();
+
+    std::string resolved = "";
+    for (const auto& p : parts) resolved += "/" + p;
+    if (resolved.empty()) resolved = "/";
+    return resolved;
+}
+
+std::string Executor::mapToHostPath(const std::string& virtualPath) {
+    std::string vroot = Platform::rootDirectory().string() + "/tinyvm";
+    if (virtualPath == "/") return vroot;
+    return vroot + virtualPath;
 }
 
 // ============================================================
@@ -129,14 +148,15 @@ void Executor::registerCommands()
 
     // ---- ls ----
     dispatch["ls"] = [this](const Parser::Command& cmd) {
-        std::string dir = cmd.arguments.empty()
+        std::string vDir = cmd.arguments.empty()
                           ? prompt.getCurrentDir()
-                          : resolvePath(cmd.arguments[0]);
+                          : resolveVirtualPath(cmd.arguments[0], prompt.getCurrentDir());
+        std::string hDir = mapToHostPath(vDir);
 
         size_t count = 0;
-        char** entries = fileio_list_dir(dir.c_str(), &count);
+        char** entries = fileio_list_dir(hDir.c_str(), &count);
         if (!entries) {
-            error("ls", ("cannot access '" + dir + "': No such directory").c_str());
+            error("ls", ("cannot access '" + vDir + "': No such directory").c_str());
             return;
         }
 
@@ -147,8 +167,8 @@ void Executor::registerCommands()
 
         std::string line;
         for (const auto& name : names) {
-            std::string fullPath = dir + "/" + name;
-            bool isDir = fileio_is_dir(fullPath.c_str());
+            std::string fullHostPath = hDir + "/" + name;
+            bool isDir = fileio_is_dir(fullHostPath.c_str());
             // Directories in cyan, files in white
             if (isDir)
                 line += "\x1b[36m" + name + "/\x1b[0m  ";
@@ -158,70 +178,66 @@ void Executor::registerCommands()
         if (!line.empty()) out(line);
     };
 
-    // ---- cd ----
     dispatch["cd"] = [this](const Parser::Command& cmd) {
-        std::string target;
+        std::string targetVDir;
         if (cmd.arguments.empty()) {
-            // cd with no arguments → virtual home directory
-            target = Platform::rootDirectory().string()
-                   + "/tinyvm/users/";
             extern std::string username;
-            target += username;
-        } else if (cmd.arguments[0] == "..") {
-            namespace fs = std::filesystem;
-            fs::path p(prompt.getCurrentDir());
-            target = p.parent_path().string();
-        } else if (cmd.arguments[0] == "/") {
-            target = Platform::rootDirectory().string() + "/tinyvm";
+            targetVDir = "/users/" + username;
         } else {
-            target = resolvePath(cmd.arguments[0]);
+            targetVDir = resolveVirtualPath(cmd.arguments[0], prompt.getCurrentDir());
         }
 
-        if (!fileio_is_dir(target.c_str())) {
+        std::string hTarget = mapToHostPath(targetVDir);
+        if (!fileio_is_dir(hTarget.c_str())) {
             error("cd", ("no such directory: " + cmd.arguments[0]).c_str());
             return;
         }
-        prompt.setCurrentDir(target);
+        prompt.setCurrentDir(targetVDir);
     };
 
     // ---- mkdir ----
     dispatch["mkdir"] = [this](const Parser::Command& cmd) {
         if (cmd.arguments.empty()) { error("mkdir", "missing operand"); return; }
-        std::string path = resolvePath(cmd.arguments[0]);
-        if (!fileio_mkdir(path.c_str()))
+        std::string vPath = resolveVirtualPath(cmd.arguments[0], prompt.getCurrentDir());
+        std::string hPath = mapToHostPath(vPath);
+        if (!fileio_mkdir(hPath.c_str()))
             error("mkdir", ("cannot create directory '" + cmd.arguments[0] + "'").c_str());
     };
 
     // ---- touch ----
     dispatch["touch"] = [this](const Parser::Command& cmd) {
         if (cmd.arguments.empty()) { error("touch", "missing operand"); return; }
-        std::string path = resolvePath(cmd.arguments[0]);
-        if (!fileio_write(path.c_str(), "", 0))
+        std::string vPath = resolveVirtualPath(cmd.arguments[0], prompt.getCurrentDir());
+        std::string hPath = mapToHostPath(vPath);
+        if (!fileio_write(hPath.c_str(), "", 0))
             error("touch", ("cannot create file '" + cmd.arguments[0] + "'").c_str());
     };
 
     // ---- rm ----
     dispatch["rm"] = [this](const Parser::Command& cmd) {
         if (cmd.arguments.empty()) { error("rm", "missing operand"); return; }
-        std::string path = resolvePath(cmd.arguments[0]);
-        if (!fileio_delete(path.c_str()))
+        std::string vPath = resolveVirtualPath(cmd.arguments[0], prompt.getCurrentDir());
+        std::string hPath = mapToHostPath(vPath);
+        if (!fileio_delete(hPath.c_str()))
             error("rm", ("cannot remove '" + cmd.arguments[0] + "'").c_str());
     };
 
     // ---- rmdir ----
     dispatch["rmdir"] = [this](const Parser::Command& cmd) {
         if (cmd.arguments.empty()) { error("rmdir", "missing operand"); return; }
-        std::string path = resolvePath(cmd.arguments[0]);
-        if (!fileio_rmdir(path.c_str()))
+        std::string vPath = resolveVirtualPath(cmd.arguments[0], prompt.getCurrentDir());
+        std::string hPath = mapToHostPath(vPath);
+        if (!fileio_rmdir(hPath.c_str()))
             error("rmdir", ("cannot remove directory '" + cmd.arguments[0] + "'").c_str());
     };
 
     // ---- cat ----
     dispatch["cat"] = [this](const Parser::Command& cmd) {
         if (cmd.arguments.empty()) { error("cat", "missing operand"); return; }
-        std::string path = resolvePath(cmd.arguments[0]);
+        std::string vPath = resolveVirtualPath(cmd.arguments[0], prompt.getCurrentDir());
+        std::string hPath = mapToHostPath(vPath);
         size_t size = 0;
-        unsigned char* data = fileio_read(path.c_str(), &size);
+        unsigned char* data = fileio_read(hPath.c_str(), &size);
         if (!data) { error("cat", ("cannot read '" + cmd.arguments[0] + "'").c_str()); return; }
         console_write(console, reinterpret_cast<char*>(data));
         console_write(console, "\n");
@@ -231,25 +247,28 @@ void Executor::registerCommands()
     // ---- cp ----
     dispatch["cp"] = [this](const Parser::Command& cmd) {
         if (cmd.arguments.size() < 2) { error("cp", "usage: cp <source> <destination>"); return; }
-        std::string src = resolvePath(cmd.arguments[0]);
-        std::string dst = resolvePath(cmd.arguments[1]);
-        // If dst is a directory, append the filename
-        if (fileio_is_dir(dst.c_str())) {
-            dst += "/" + std::filesystem::path(src).filename().string();
+        std::string vSrc = resolveVirtualPath(cmd.arguments[0], prompt.getCurrentDir());
+        std::string vDst = resolveVirtualPath(cmd.arguments[1], prompt.getCurrentDir());
+        std::string hSrc = mapToHostPath(vSrc);
+        std::string hDst = mapToHostPath(vDst);
+        if (fileio_is_dir(hDst.c_str())) {
+            hDst += "/" + std::filesystem::path(vSrc).filename().string();
         }
-        if (!fileio_copy(src.c_str(), dst.c_str()))
+        if (!fileio_copy(hSrc.c_str(), hDst.c_str()))
             error("cp", ("cannot copy '" + cmd.arguments[0] + "'").c_str());
     };
 
     // ---- mv ----
     dispatch["mv"] = [this](const Parser::Command& cmd) {
         if (cmd.arguments.size() < 2) { error("mv", "usage: mv <source> <destination>"); return; }
-        std::string src = resolvePath(cmd.arguments[0]);
-        std::string dst = resolvePath(cmd.arguments[1]);
-        if (fileio_is_dir(dst.c_str())) {
-            dst += "/" + std::filesystem::path(src).filename().string();
+        std::string vSrc = resolveVirtualPath(cmd.arguments[0], prompt.getCurrentDir());
+        std::string vDst = resolveVirtualPath(cmd.arguments[1], prompt.getCurrentDir());
+        std::string hSrc = mapToHostPath(vSrc);
+        std::string hDst = mapToHostPath(vDst);
+        if (fileio_is_dir(hDst.c_str())) {
+            hDst += "/" + std::filesystem::path(vSrc).filename().string();
         }
-        if (!fileio_rename(src.c_str(), dst.c_str()))
+        if (!fileio_rename(hSrc.c_str(), hDst.c_str()))
             error("mv", ("cannot move '" + cmd.arguments[0] + "'").c_str());
     };
 
@@ -264,10 +283,11 @@ void Executor::registerCommands()
             argIdx = 2;
         }
         if (argIdx >= cmd.arguments.size()) { error("head", "missing file operand"); return; }
-        file = resolvePath(cmd.arguments[argIdx]);
+        std::string vPath = resolveVirtualPath(cmd.arguments[argIdx], prompt.getCurrentDir());
+        std::string hPath = mapToHostPath(vPath);
 
         size_t size = 0;
-        unsigned char* data = fileio_read(file.c_str(), &size);
+        unsigned char* data = fileio_read(hPath.c_str(), &size);
         if (!data) { error("head", ("cannot read '" + cmd.arguments[argIdx] + "'").c_str()); return; }
 
         std::string content(reinterpret_cast<char*>(data), size);
@@ -295,10 +315,11 @@ void Executor::registerCommands()
             argIdx = 2;
         }
         if (argIdx >= cmd.arguments.size()) { error("tail", "missing file operand"); return; }
-        file = resolvePath(cmd.arguments[argIdx]);
+        std::string vPath = resolveVirtualPath(cmd.arguments[argIdx], prompt.getCurrentDir());
+        std::string hPath = mapToHostPath(vPath);
 
         size_t size = 0;
-        unsigned char* data = fileio_read(file.c_str(), &size);
+        unsigned char* data = fileio_read(hPath.c_str(), &size);
         if (!data) { error("tail", ("cannot read '" + cmd.arguments[argIdx] + "'").c_str()); return; }
 
         std::string content(reinterpret_cast<char*>(data), size);
@@ -321,10 +342,11 @@ void Executor::registerCommands()
     // ---- wc ----
     dispatch["wc"] = [this](const Parser::Command& cmd) {
         if (cmd.arguments.empty()) { error("wc", "missing file operand"); return; }
-        std::string path = resolvePath(cmd.arguments[0]);
+        std::string vPath = resolveVirtualPath(cmd.arguments[0], prompt.getCurrentDir());
+        std::string hPath = mapToHostPath(vPath);
 
         size_t size = 0;
-        unsigned char* data = fileio_read(path.c_str(), &size);
+        unsigned char* data = fileio_read(hPath.c_str(), &size);
         if (!data) { error("wc", ("cannot read '" + cmd.arguments[0] + "'").c_str()); return; }
 
         size_t lines = 0, words = 0, bytes = size;
@@ -344,34 +366,40 @@ void Executor::registerCommands()
     // ---- find ----
     dispatch["find"] = [this](const Parser::Command& cmd) {
         // Usage: find [directory] <pattern>
-        std::string dir, pattern;
+        std::string vDir, pattern;
         if (cmd.arguments.size() >= 2) {
-            dir     = resolvePath(cmd.arguments[0]);
+            vDir    = resolveVirtualPath(cmd.arguments[0], prompt.getCurrentDir());
             pattern = cmd.arguments[1];
         } else if (cmd.arguments.size() == 1) {
-            dir     = prompt.getCurrentDir();
+            vDir    = prompt.getCurrentDir();
             pattern = cmd.arguments[0];
         } else {
             error("find", "usage: find [directory] <pattern>");
             return;
         }
+        std::string hDir = mapToHostPath(vDir);
 
         namespace fs = std::filesystem;
         std::error_code ec;
-        for (auto& entry : fs::recursive_directory_iterator(dir, ec)) {
+        for (auto& entry : fs::recursive_directory_iterator(hDir, ec)) {
             std::string name = entry.path().filename().string();
             if (name.find(pattern) != std::string::npos) {
-                out(entry.path().string());
+                // Map the host path back to virtual for printing
+                std::string resHost = entry.path().string();
+                if (resHost.find(mapToHostPath("/")) == 0) {
+                    std::string resVirt = resHost.substr(mapToHostPath("/").length());
+                    if (resVirt.empty()) resVirt = "/";
+                    else resVirt = "/" + resVirt;
+                    out(resVirt);
+                }
             }
         }
-        if (ec) error("find", ("cannot access '" + dir + "'").c_str());
+        if (ec) error("find", ("cannot access '" + vDir + "'").c_str());
     };
 
-    // ---- tree ----
     dispatch["tree"] = [this](const Parser::Command& cmd) {
-        std::string dir = cmd.arguments.empty()
-                          ? prompt.getCurrentDir()
-                          : resolvePath(cmd.arguments[0]);
+        std::string vDir = cmd.arguments.empty() ? prompt.getCurrentDir() : resolveVirtualPath(cmd.arguments[0], prompt.getCurrentDir());
+        std::string hDir = mapToHostPath(vDir);
 
         namespace fs = std::filesystem;
         std::function<void(const fs::path&, const std::string&)> printTree;
@@ -401,8 +429,8 @@ void Executor::registerCommands()
             }
         };
 
-        out("\x1b[36m" + dir + "\x1b[0m");
-        printTree(fs::path(dir), "");
+        out("\x1b[36m" + vDir + "\x1b[0m");
+        printTree(fs::path(hDir), "");
     };
 
     // ---- env ----

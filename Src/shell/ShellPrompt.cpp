@@ -6,7 +6,8 @@
 
 ShellPrompt::ShellPrompt() {
     hostname = "tinyvm"; // Use "tinyvm" instead of default host OS
-    currentDir = Platform::homeDirectory().string();
+    extern std::string username;
+    currentDir = "/users/" + username;
 }
 
 void ShellPrompt::setCurrentDir(const std::string& dir) {
@@ -18,12 +19,13 @@ std::string ShellPrompt::getCurrentDir() const {
 }
 
 void ShellPrompt::display() {
-    std::string home = Platform::homeDirectory().string();
+    extern std::string username;
+    std::string vhome = "/users/" + username;
     std::string displayPath = currentDir;
     
     // Replace home directory with ~
-    if (displayPath.find(home) == 0) {
-        displayPath.replace(0, home.length(), "~");
+    if (displayPath.find(vhome) == 0) {
+        displayPath.replace(0, vhome.length(), "~");
     }
     
     // Format: username@hostname:path$ 

@@ -40,6 +40,7 @@ public:
 
     void write(std::string_view text);
     void writeLine(std::string_view text);
+    bool writeImage(const std::filesystem::path& path);
 
 
     // =============================
@@ -105,8 +106,6 @@ public:
     SDL_Window*   getWindow()   const { return window; }
 
 
-    bool loadBanner(const std::filesystem::path& path);
-    void unloadBanner();
 
 private:
 
@@ -114,14 +113,10 @@ private:
     SDL_Window*   window         = nullptr;
     SDL_Renderer* renderer       = nullptr;
     TTF_Font*     font           = nullptr;
-    SDL_Texture*  bannerTexture  = nullptr;
-
     // ---- Window state ----------------------------------------
     bool running      = false;
     int  windowWidth  = 0;
     int  windowHeight = 0;
-    int  bannerWidth  = 0;
-    int  bannerHeight = 0;
 
     // ---- Font ------------------------------------------------
     std::filesystem::path currentFont;
@@ -159,7 +154,6 @@ private:
 
     // ---- Private helpers -------------------------------------
     int  lineHeight() const;
-    int  bannerBottom() const;
 
     // Convert pixel (y) inside text area → scrollback line index.
     // Returns SIZE_MAX if outside the text area.
@@ -206,6 +200,7 @@ void           console_destroy(ConsoleHandle* console);
 
 void  console_write(ConsoleHandle* console, const char* text);
 void  console_write_line(ConsoleHandle* console, const char* text);
+bool  console_write_image(ConsoleHandle* console, const char* path);
 char* console_read_line(ConsoleHandle* console);
 
 void console_clear(ConsoleHandle* console);

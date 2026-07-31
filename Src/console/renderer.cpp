@@ -86,96 +86,123 @@ void Console::render()
     SDL_SetRenderDrawColor(renderer, 18, 18, 25, 255); // dark navy
     SDL_RenderClear(renderer);
 
-    // ---- Text area metrics -----------------------------------
-    // yOffset is always 10 (top padding). The boot banner is part of
-    // the scrollback history, not a fixed overlay.
-    int yOffset = bannerBottom();
-    int lh        = lineHeight();
-    int textTop   = yOffset;
+    if (scrollback.size() == 0) {
+        SDL_RenderPresent(renderer);
+        return;
+    }
+
+    int textTop = 10;
     int textAreaH = windowHeight - textTop;
+    int lh = lineHeight();
 
-    std::size_t visLines = (lh > 0)
-                           ? static_cast<std::size_t>(textAreaH / lh)
-                           : 25u;
+    // Reverse-calculate layout to match rendering logic
+    int currentY = windowHeight - 10; // Bottom of text area
+    std::size_t idx = scrollback.size();
+    
+    std::size_t skip = std::min(viewport.scrollOffset, scrollback.size() - 1);
+    idx -= skip;
+    
+    while (idx > 0) {
+        int h = lh;
+        if (scrollback.entryAt(idx - 1).type == ConsoleEntry::Type::Image) {
+            float scaledW = windowWidth * 0.5f;
+            float scaledH = scrollback.entryAt(idx - 1).imageHeight * (scaledW / scrollback.entryAt(idx - 1).imageWidth);
+            h = static_cast<int>(scaledH);
+        }
+        
+        if (currentY - h < textTop) {
+            currentY -= h;
+            --idx;
+            break; // Starts above textTop
+        }
+        currentY -= h;
+        --idx;
+    }
 
+    std::size_t first = idx;
+    std::size_t last = scrollback.size() - skip;
     std::size_t total = scrollback.size();
-    std::size_t first = viewport.firstVisible(total, visLines);
-    std::size_t last  = std::min(first + visLines, total);
 
     // ---- Render visible lines --------------------------------
+    int rowY = currentY;
+    
     for (std::size_t li = first; li < last; ++li) {
-        int rowY = textTop + static_cast<int>(li - first) * lh;
+        const auto& entry = scrollback.entryAt(li);
+        
+        int h = lh;
+        if (entry.type == ConsoleEntry::Type::Image) {
+            float scaledW = windowWidth * 0.5f;
+            float scaledH = entry.imageHeight * (scaledW / entry.imageWidth);
+            h = static_cast<int>(scaledH);
+            
+            if (rowY + h > 0 && rowY < windowHeight) {
+                SDL_FRect dstRect;
+                dstRect.w = scaledW;
+                dstRect.h = scaledH;
+                dstRect.x = (windowWidth - scaledW) / 2.0f; // Center image
+                dstRect.y = static_cast<float>(rowY);
+                SDL_RenderTexture(renderer, entry.texture, nullptr, &dstRect);
+            }
+        } else {
+            // Text rendering
+            if (rowY + h > 0 && rowY < windowHeight) {
+                const TextLine& tl = entry.textLine;
+                int xOffset = 10;
 
-        // Skip rows that are off-screen.
-        if (rowY + lh < 0 || rowY > windowHeight) {
-            continue;
-        }
+                std::string flat;
+                for (const auto& seg : tl) flat += seg.text;
 
-        const TextLine& tl = scrollback.lineAt(li);
-        int xOffset = 10;
+                bool lineInSel = selection.active &&
+                                 li >= selection.selStart().line &&
+                                 li <= selection.selEnd().line;
 
-        // Build the flat text of this line so we can measure column offsets.
-        std::string flat;
-        for (const auto& seg : tl) flat += seg.text;
+                if (lineInSel && !flat.empty()) {
+                    SelectionPos s = selection.selStart();
+                    SelectionPos e = selection.selEnd();
 
-        // Pre-compute per-character x positions for selection hit-testing.
-        // (We only need this when the line is inside the selection range.)
-        bool lineInSel = selection.active &&
-                         li >= selection.selStart().line &&
-                         li <= selection.selEnd().line;
+                    std::size_t fromCol = (li == s.line) ? s.col : 0;
+                    std::size_t toCol   = (li == e.line) ? e.col : flat.size();
+                    fromCol = std::min(fromCol, flat.size());
+                    toCol   = std::min(toCol,   flat.size());
 
-        // ---- Selection background for this line --------------
-        if (lineInSel && !flat.empty()) {
-            SelectionPos s = selection.selStart();
-            SelectionPos e = selection.selEnd();
-
-            std::size_t fromCol = (li == s.line) ? s.col : 0;
-            std::size_t toCol   = (li == e.line) ? e.col : flat.size();
-            fromCol = std::min(fromCol, flat.size());
-            toCol   = std::min(toCol,   flat.size());
-
-            if (fromCol < toCol) {
-                // Measure x for fromCol and toCol.
-                int xFrom = 10, xTo = 10;
-                if (font) {
-                    int wBefore = 0, wRange = 0;
-                    if (fromCol > 0)
-                        TTF_GetStringSize(font, flat.c_str(), fromCol, &wBefore, nullptr);
-                    if (toCol > fromCol)
-                        TTF_GetStringSize(font, flat.c_str() + fromCol, toCol - fromCol, &wRange, nullptr);
-                    xFrom = 10 + wBefore;
-                    xTo   = xFrom + wRange;
+                    if (fromCol < toCol) {
+                        int xFrom = 10, xTo = 10;
+                        if (font) {
+                            int wBefore = 0, wRange = 0;
+                            if (fromCol > 0)
+                                TTF_GetStringSize(font, flat.c_str(), fromCol, &wBefore, nullptr);
+                            if (toCol > fromCol)
+                                TTF_GetStringSize(font, flat.c_str() + fromCol, toCol - fromCol, &wRange, nullptr);
+                            xFrom = 10 + wBefore;
+                            xTo   = xFrom + wRange;
+                        }
+                        drawHighlight(xFrom, rowY, xTo - xFrom, lh);
+                    } else if (li != e.line) {
+                        drawHighlight(10, rowY, windowWidth - 10, lh);
+                    }
                 }
-                drawHighlight(xFrom, rowY, xTo - xFrom, lh);
-            } else if (li != e.line) {
-                // Full-line highlight for middle lines.
-                drawHighlight(10, rowY, windowWidth - 10, lh);
+
+                for (const auto& seg : tl) {
+                    xOffset += draw(seg.text, xOffset, rowY, seg.r, seg.g, seg.b);
+                }
+
+                if (li == total - 1) {
+                    xOffset += draw(currentInput, xOffset, rowY, 220, 220, 220);
+                    if ((SDL_GetTicks() / 530) % 2 == 0) {
+                        draw("|", xOffset, rowY, 100, 220, 255);
+                    }
+                }
             }
         }
-
-        // ---- Draw text segments ------------------------------
-        for (const auto& seg : tl) {
-            xOffset += draw(seg.text, xOffset, rowY, seg.r, seg.g, seg.b);
-        }
-
-        // ---- Draw input prompt on the last line --------------
-        if (li == total - 1) {
-            xOffset += draw(currentInput, xOffset, rowY, 220, 220, 220);
-            // Blinking cursor.
-            if ((SDL_GetTicks() / 530) % 2 == 0) {
-                draw("|", xOffset, rowY, 100, 220, 255);
-            }
-        }
+        
+        rowY += h;
     }
 
     // ---- Scrollbar indicator ---------------------------------
-    if (viewport.scrollOffset > 0 && total > visLines) {
-        // Draw a slim scrollbar on the right edge.
-        float barH = static_cast<float>(textAreaH) *
-                     (static_cast<float>(visLines) / static_cast<float>(total));
+    if (viewport.scrollOffset > 0 && total > 1) {
+        float barH = 50.0f; // Fixed height scrollbar for simplicity when using variable heights
         float barY = textTop + static_cast<float>(textAreaH - barH) *
-                     (1.0f - static_cast<float>(viewport.scrollOffset) /
-                             static_cast<float>(Viewport::maxOffset(total, visLines)));
+                     (1.0f - static_cast<float>(viewport.scrollOffset) / static_cast<float>(total - 1));
 
         SDL_SetRenderDrawColor(renderer, 100, 100, 120, 180);
         SDL_FRect bar{static_cast<float>(windowWidth - 6), barY, 4.0f, barH};

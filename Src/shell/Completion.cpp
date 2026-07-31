@@ -1,4 +1,5 @@
 #include "Completion.h"
+#include "Executor.h"
 #include <filesystem>
 #include <algorithm>
 
@@ -66,16 +67,18 @@ std::vector<std::string> Completion::complete(const std::string& prefix,
         namePart = prefix.substr(slashPos + 1);
     }
 
-    std::filesystem::path searchDir = cwd;
+    // searchDirV is the virtual directory we want to search in.
+    std::string searchDirV;
     if (!dirPart.empty()) {
-        if (dirPart[0] == '/')
-            searchDir = dirPart; // absolute
-        else
-            searchDir = std::filesystem::path(cwd) / dirPart;
+        searchDirV = Executor::resolveVirtualPath(dirPart, cwd);
+    } else {
+        searchDirV = cwd;
     }
 
+    std::string searchDirH = Executor::mapToHostPath(searchDirV);
+
     std::error_code ec;
-    std::filesystem::directory_iterator it(searchDir, ec);
+    std::filesystem::directory_iterator it(searchDirH, ec);
     if (ec) return results;
 
     for (const auto& entry : it) {

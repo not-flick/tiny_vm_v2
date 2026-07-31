@@ -61,8 +61,6 @@ Console::Console(int width, int height, std::string_view title)
 
 Console::~Console()
 {
-    unloadBanner();
-
     if (font)     TTF_CloseFont(font);
     if (renderer) SDL_DestroyRenderer(renderer);
     if (window)   SDL_DestroyWindow(window);
@@ -182,25 +180,20 @@ void Console::pollEvents()
             case SDLK_PAGEUP:
             {
                 int lh = lineHeight();
-                int textAreaH = windowHeight - bannerBottom();
-                std::size_t visLines = (lh > 0) ? textAreaH / lh : 1;
+                std::size_t visLines = (lh > 0) ? windowHeight / lh : 1;
                 viewport.pageUp(scrollback.size(), visLines);
                 break;
             }
             case SDLK_PAGEDOWN:
             {
                 int lh = lineHeight();
-                int textAreaH = windowHeight - bannerBottom();
-                std::size_t visLines = (lh > 0) ? textAreaH / lh : 1;
+                std::size_t visLines = (lh > 0) ? windowHeight / lh : 1;
                 viewport.pageDown(visLines);
                 break;
             }
             case SDLK_HOME:
             {
-                int lh = lineHeight();
-                int textAreaH = windowHeight - bannerBottom();
-                std::size_t visLines = (lh > 0) ? textAreaH / lh : 1;
-                viewport.goHome(scrollback.size(), visLines);
+                viewport.goHome(scrollback.size());
                 break;
             }
             case SDLK_END:
@@ -225,15 +218,11 @@ void Console::pollEvents()
             break; // SDL_EVENT_KEY_DOWN
         }
 
-        // ---- mouse wheel (scrolling) ----------------------------
         case SDL_EVENT_MOUSE_WHEEL:
         {
-            int lh = lineHeight();
-            int textAreaH = windowHeight - bannerBottom();
-            std::size_t visLines = (lh > 0) ? textAreaH / lh : 1;
             // event.wheel.y > 0 → scroll up (toward older output)
             if (event.wheel.y > 0) {
-                viewport.scrollUp(3, scrollback.size(), visLines);
+                viewport.scrollUp(3, scrollback.size());
             } else if (event.wheel.y < 0) {
                 viewport.scrollDown(3);
             }
@@ -347,14 +336,8 @@ void Console::write(std::string_view text)
             scrollback.pushLine({});
 
             // Auto-follow: keep viewport pinned if it was already at bottom.
-            {
-                int lh = lineHeight();
-                int textAreaH = windowHeight - bannerBottom();
-                std::size_t visLines = (lh > 0)
-                                       ? static_cast<std::size_t>(textAreaH / lh)
-                                       : 25u;
-                viewport.onNewLine(scrollback.size(), visLines);
-            }
+            viewport.onNewLine();
+
 
             ++i;
         }
@@ -393,6 +376,30 @@ void Console::writeLine(std::string_view text) {
     write("\n");
 }
 
+bool Console::writeImage(const std::filesystem::path& path) {
+    if (!std::filesystem::exists(path)) return false;
+    SDL_Texture* tex = IMG_LoadTexture(renderer, path.string().c_str());
+    if (!tex) return false;
+
+    float w, h;
+    if (SDL_GetTextureSize(tex, &w, &h)) {
+        ConsoleEntry entry;
+        entry.type = ConsoleEntry::Type::Image;
+        entry.texture = tex;
+        entry.imageWidth = static_cast<int>(w);
+        entry.imageHeight = static_cast<int>(h);
+        
+        scrollback.pushEntry(entry);
+        // Start a fresh empty text line after the image.
+        scrollback.pushLine({});
+        viewport.onNewLine();
+        return true;
+    }
+    SDL_DestroyTexture(tex);
+    return false;
+}
+
+
 // ============================================================
 // Input
 // ============================================================
@@ -418,33 +425,6 @@ void Console::clear() {
     selection.clear();
 }
 
-// ============================================================
-// Banner loading
-// ============================================================
-
-bool Console::loadBanner(const std::filesystem::path& path) {
-    if (!std::filesystem::exists(path)) return false;
-    bannerTexture = IMG_LoadTexture(renderer, path.string().c_str());
-    if (!bannerTexture) {
-        SDL_Log("Failed to load banner: %s", SDL_GetError());
-        return false;
-    }
-    float w, h;
-    if (SDL_GetTextureSize(bannerTexture, &w, &h)) {
-        bannerWidth  = static_cast<int>(w);
-        bannerHeight = static_cast<int>(h);
-        return true;
-    }
-    unloadBanner();
-    return false;
-}
-
-void Console::unloadBanner() {
-    if (bannerTexture) {
-        SDL_DestroyTexture(bannerTexture);
-        bannerTexture = nullptr;
-    }
-}
 
 // ============================================================
 // Private helpers
@@ -452,13 +432,6 @@ void Console::unloadBanner() {
 
 int Console::lineHeight() const {
     return font ? TTF_GetFontHeight(font) : 20;
-}
-
-int Console::bannerBottom() const {
-    // The boot banner is part of the scrollback buffer, not a fixed overlay.
-    // Always return the top padding constant so the renderer needs no
-    // special-casing for a banner texture.
-    return 10;
 }
 
 std::string Console::lineText(std::size_t idx) const {
@@ -470,20 +443,55 @@ std::string Console::lineText(std::size_t idx) const {
 }
 
 std::size_t Console::pixelToLineIndex(int y) const {
-    int lh = lineHeight();
-    if (lh == 0) return SIZE_MAX;
-
-    int textTop = bannerBottom();
-    if (y < textTop) return SIZE_MAX;
-
-    int textAreaH = windowHeight - textTop;
-    std::size_t visLines = static_cast<std::size_t>(textAreaH / lh);
-    std::size_t first = viewport.firstVisible(scrollback.size(), visLines);
-
-    std::size_t row = static_cast<std::size_t>((y - textTop) / lh);
-    std::size_t idx = first + row;
-    if (idx >= scrollback.size()) return SIZE_MAX;
-    return idx;
+    if (scrollback.size() == 0) return SIZE_MAX;
+    
+    // Reverse-calculate layout to match rendering logic
+    int currentY = windowHeight - 10; // Bottom of text area
+    std::size_t idx = scrollback.size();
+    
+    std::size_t skip = std::min(viewport.scrollOffset, scrollback.size() - 1);
+    idx -= skip;
+    
+    while (idx > 0) {
+        int h = lineHeight();
+        if (scrollback.entryAt(idx - 1).type == ConsoleEntry::Type::Image) {
+            // Scale image width to half of window width, maintain aspect ratio
+            float scaledW = windowWidth * 0.5f;
+            float scaledH = scrollback.entryAt(idx - 1).imageHeight * (scaledW / scrollback.entryAt(idx - 1).imageWidth);
+            h = static_cast<int>(scaledH);
+        }
+        
+        if (currentY - h < 10) {
+            currentY -= h;
+            --idx;
+            break;
+        }
+        currentY -= h;
+        --idx;
+    }
+    
+    // Now we know the first visible index `idx` starts at `currentY`.
+    // Scan downwards to find which entry `y` falls into.
+    std::size_t iterIdx = idx;
+    int iterY = currentY;
+    
+    while (iterIdx < scrollback.size() - skip) {
+        int h = lineHeight();
+        if (scrollback.entryAt(iterIdx).type == ConsoleEntry::Type::Image) {
+            float scaledW = windowWidth * 0.5f;
+            float scaledH = scrollback.entryAt(iterIdx).imageHeight * (scaledW / scrollback.entryAt(iterIdx).imageWidth);
+            h = static_cast<int>(scaledH);
+        }
+        
+        if (y >= iterY && y < iterY + h) {
+            return iterIdx;
+        }
+        
+        iterY += h;
+        ++iterIdx;
+    }
+    
+    return SIZE_MAX;
 }
 
 std::size_t Console::pixelToColumn(int x, std::size_t lineIdx) const {

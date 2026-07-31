@@ -23,6 +23,13 @@ public:
     // Execute a parsed command.
     void execute(const Parser::Command& cmd);
 
+    // Resolve an argument into an absolute virtual path (e.g. "/users/not-flick").
+    // Returns empty string if the path attempts to escape the virtual root (e.g. "/../").
+    static std::string resolveVirtualPath(const std::string& arg, const std::string& cwd);
+
+    // Map an absolute virtual path to the real host path.
+    static std::string mapToHostPath(const std::string& virtualPath);
+
 private:
     ShellPrompt& prompt;
     History&     history;
@@ -33,10 +40,6 @@ private:
     void registerCommands();
 
     // ---- Helpers ----
-
-    // Resolve a path argument relative to the virtual cwd.
-    // Absolute paths (starting with '/') are returned unchanged.
-    std::string resolvePath(const std::string& arg) const;
 
     // Print a formatted error to the console.
     static void error(const char* cmd, const char* msg);
